@@ -1,0 +1,10 @@
+# Test copy of the app (it uses the test database) - not part of the app
+staging/
+
+# Uploaded shoe photos - shop data, not code (back them up separately, see README)
+uploads/
+
+# Editor / system files
+.vscode/
+Thumbs.db
+desktop.ini
