@@ -12,7 +12,6 @@ Each shoe model can come in several **colorways** (for example Nike Air Force 1 
 Built with **PHP 8.1+ (PDO)**, **MariaDB** (included in XAMPP) and **Bootstrap 5**. It runs on your own computer (localhost).
 
 **Repository:** https://github.com/brionesfrancisclark/shoe-inventory
-*(private: the owner has to add you as a collaborator before you can download it)*
 
 ---
 
@@ -133,8 +132,6 @@ The files must end up in a folder named **`shoe-inventory`** inside XAMPP's `htd
 - macOS: `/Applications/XAMPP/htdocs/shoe-inventory/`
 - Linux: `/opt/lampp/htdocs/shoe-inventory/`
 
-The repository is private, so ask the owner to add you first: on GitHub, **Settings → Collaborators → Add people**.
-
 **Option A: clone with Git.**
 1. Install [Git](https://git-scm.com/downloads) if you don't have it. To check, run `git --version`.
 2. Open **Command Prompt**: press the Windows key, type `cmd` and press Enter.
@@ -145,10 +142,10 @@ cd C:\xampp\htdocs
 git clone https://github.com/brionesfrancisclark/shoe-inventory.git
 ```
 
-A GitHub sign-in window may open the first time. This creates `C:\xampp\htdocs\shoe-inventory\` with all the files.
+This creates `C:\xampp\htdocs\shoe-inventory\` with all the files.
 
 **Option B: download a ZIP (no Git needed).**
-1. Sign in to GitHub and open https://github.com/brionesfrancisclark/shoe-inventory
+1. Open https://github.com/brionesfrancisclark/shoe-inventory (no GitHub account needed)
 2. Click the green **Code** button, then **Download ZIP**.
 3. Extract it into `C:\xampp\htdocs`. GitHub names the folder `shoe-inventory-main`, so **rename it to `shoe-inventory`**. Otherwise the addresses below won't work.
 
@@ -393,7 +390,7 @@ Both ask for confirmation first. The history keeps a record.
 - **Exactly one Admin.** Staff can never be promoted, and the Admin can't be demoted, turned off or deleted. A unique key and two triggers in the database enforce this, even against hand-made requests.
 - **Photo uploads** are checked by their real content: only JPEG, PNG, WebP or GIF, at most 5 MB. Each is saved under a new random name, so an uploaded file can never run as code. Photo links must be `http(s)` web addresses.
 - Pages can't be shown inside other websites' frames (clickjacking protection). The sign-in cookie is `HttpOnly` and `SameSite`, and also `Secure` when you use HTTPS.
-- **Never commit real credentials.** `db.php` in the repository contains only the XAMPP defaults (`root`, empty password). If you set a real database password locally, don't push it to GitHub. Also never commit database backups, photos or exports with real accounts or business data.
+- **Never commit real credentials.** `db.php` in the repository contains only the XAMPP defaults (`root`, empty password). If you set a real database password locally, don't push it to GitHub: this repository is **public**, so anyone can read what you push. Also never commit database backups, photos or exports with real accounts or business data.
 - This is built for **one store computer or a trusted local network**. Before putting it on a public server, do all of these:
   - use HTTPS;
   - set a strong MySQL password;
