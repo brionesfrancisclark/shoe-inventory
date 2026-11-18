@@ -113,8 +113,8 @@ render_header($setupMode ? 'First-time setup' : 'Sign in', '', false);
 ?>
 <main id="main" class="container py-5 auth-wrap" style="max-width: 440px;">
     <div class="text-center mb-4">
-        <span class="brand-mark brand-mark-lg mb-3" aria-hidden="true"><i class="bi bi-bag-check-fill"></i></span>
-        <h1 class="auth-title mb-1">Footwear Inventory</h1>
+        <img src="assets/logo.png" class="brand-logo brand-logo-lg d-inline-block mb-3" width="201" height="182" alt="">
+        <h1 class="auth-title mb-1">Dazzling Footwear</h1>
         <p class="text-muted mb-0"><?= $setupMode ? 'First-time setup' : 'Sign in to continue' ?></p>
     </div>
 

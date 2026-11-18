@@ -16,12 +16,13 @@ function render_header(string $title, string $active = '', bool $nav = true, str
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><?= e($title) ?> | Footwear Admin</title>
+    <title><?= e($title) ?> | Dazzling Footwear</title>
+    <link rel="icon" type="image/png" href="assets/favicon.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
         /* ============================================================
-           Footwear Inventory - shared theme
+           Dazzling Footwear - shared theme
            Minimal black & white, bold type, pill buttons, soft cards.
            Everything below only re-skins Bootstrap 5; no behaviour here.
            ============================================================ */
@@ -77,11 +78,8 @@ function render_header(string $title, string $active = '', bool $nav = true, str
         }
         .app-nav .nav-link:hover::after, .app-nav .nav-link.active::after { transform: scaleX(1); }
         .app-nav .navbar-toggler { border-color: #cacacb; }
-        .brand-mark {
-            display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
-            width: 2rem; height: 2rem; border-radius: .6rem; background: var(--ink); color: #fff; font-size: 1rem;
-        }
-        .brand-mark-lg { width: 3.5rem; height: 3.5rem; border-radius: 1rem; font-size: 1.6rem; }
+        .brand-logo { height: 2.25rem; width: auto; flex-shrink: 0; }          /* the two-shoe logo (assets/logo.png) */
+        .brand-logo-lg { height: 5.5rem; }
 
         /* ---------- Cards ---------- */
         .card { border: 1px solid #ececec; }
@@ -218,7 +216,7 @@ function render_header(string $title, string $active = '', bool $nav = true, str
 <?php if ($nav && $u): ?>
 <nav class="navbar navbar-expand-md navbar-light bg-white app-nav sticky-top mb-4">
     <div class="container">
-        <a class="navbar-brand" href="<?= e(home_page()) ?>"><span class="brand-mark" aria-hidden="true"><i class="bi bi-bag-check-fill"></i></span>Footwear Inventory</a>
+        <a class="navbar-brand" href="<?= e(home_page()) ?>"><img src="assets/logo.png" class="brand-logo" width="201" height="182" alt="">Dazzling Footwear</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav-menu"
                 aria-controls="nav-menu" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>

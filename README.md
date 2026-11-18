@@ -1,6 +1,8 @@
-# Footwear Inventory & Size Availability System
+# Dazzling Footwear: Inventory & Size Availability System
 
-A web app for a shoe store that keeps track of every shoe model and how many pairs are left in each size.
+<img src="assets/logo.png" alt="Dazzling Footwear logo" width="100">
+
+**Dazzling Footwear** is a web app for a shoe store that keeps track of every shoe model and how many pairs are left in each size.
 
 Each shoe model can come in several **colorways** (for example Nike Air Force 1 in *White* and *Black*). Each colorway has its own photo, its own sizes and its own stock.
 
@@ -83,6 +85,9 @@ shoe-inventory/
 ├── migrations/
 │   ├── 001_colorways_permissions.sql   Upgrades an OLD installation (see "Upgrading an old copy")
 │   └── verify_inventory.sql            Read-only check of shoes, stock and accounts
+├── assets/
+│   ├── logo.png            The Dazzling Footwear logo (menu bar and sign-in page)
+│   └── favicon.png         The small icon in the browser tab
 ├── db.php                  Database settings (the only file you normally edit) + small helpers
 ├── auth.php                Sign-in checks, permissions, security headers
 ├── layout.php              Shared page header, menu, messages
@@ -365,6 +370,8 @@ Both ask for confirmation first. The history keeps a record.
 | What                                   | Where                                          | Default |
 |----------------------------------------|------------------------------------------------|---------|
 | Database settings                      | `db.php`                                       | `root`, no password, database `shoe_inventory` |
+| Store name                             | `layout.php` (menu bar and tab title) and `login.php` (sign-in page) | Dazzling Footwear |
+| Logo / tab icon                        | Replace `assets/logo.png` / `assets/favicon.png` (keep the file names) | Two-shoe logo |
 | Time zone                              | `APP_TIMEZONE` in `db.php`                     | `Asia/Manila` |
 | Low-stock threshold                    | `LOW_STOCK_LIMIT` in `inventory-lib.php`       | 3 pairs (1–3 = low, 0 = out) |
 | Standard sizes on the forms            | `STANDARD_SIZES` in `inventory-lib.php`        | US 7.0–11.0 in half sizes |
