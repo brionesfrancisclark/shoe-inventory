@@ -21,6 +21,25 @@ const MAX_QTY                = 100000;   // most pairs one size can hold
 const MAX_SIZES_PER_COLORWAY = 40;
 const MAX_COLORWAYS_PER_FORM = 20;       // PHP accepts at most 20 files per request (max_file_uploads)
 
+/**
+ * The two main product categories: the code stored in shoes.main_category => the name people see.
+ * The free-text category (Running, Basketball, Casual, ...) is separate and stays as it is.
+ * Models from before migration 002 can have no main category (NULL) until someone picks one.
+ */
+const MAIN_CATEGORIES = ['women' => "Women's Shoes", 'men' => "Men's Shoes"];
+
+/** "Women's Shoes" / "Men's Shoes" for a stored code; '' when the model has none yet. */
+function main_category_label(?string $code): string
+{
+    return MAIN_CATEGORIES[(string) $code] ?? '';
+}
+
+/** A main category code from the address bar: 'women', 'men', or '' (anything else = All Shoes). */
+function main_category_param(mixed $raw): string
+{
+    return is_string($raw) && isset(MAIN_CATEGORIES[$raw]) ? $raw : '';
+}
+
 /* =======================================================================================
    Text and number input
    ======================================================================================= */
@@ -102,20 +121,27 @@ function stock_status(int $qty): string
    Validating form input (nothing is saved here)
    ======================================================================================= */
 
-/** Shoe model fields -> [clean values, errors by field]. Price comes back as "5500.00". */
+/**
+ * Shoe model fields -> [clean values, errors by field]. Price comes back as "5500.00".
+ * main_category must be one of MAIN_CATEGORIES ('women' or 'men'): every saved model gets one.
+ */
 function validate_shoe_fields(array $in): array
 {
     $v = [
-        'name'     => clean_text(form_str($in, 'name')),
-        'brand'    => clean_text(form_str($in, 'brand')),
-        'category' => clean_text(form_str($in, 'category')),
-        'price'    => trim(form_str($in, 'price')),
+        'name'          => clean_text(form_str($in, 'name')),
+        'brand'         => clean_text(form_str($in, 'brand')),
+        'main_category' => form_str($in, 'main_category'),
+        'category'      => clean_text(form_str($in, 'category')),
+        'price'         => trim(form_str($in, 'price')),
     ];
     $errors = [];
     foreach (['name' => ['Shoe name', 150], 'brand' => ['Brand', 100], 'category' => ['Category', 100]] as $field => [$what, $max]) {
         if (($msg = check_label($v[$field], $what, $max)) !== null) {
             $errors[$field] = $msg;
         }
+    }
+    if (!isset(MAIN_CATEGORIES[$v['main_category']])) {
+        $errors['main_category'] = "Choose the main category: Women's Shoes or Men's Shoes.";
     }
     $price = parse_price($v['price']);
     if ($price === null) {
@@ -219,6 +245,9 @@ function duplicate_names(array $names): array
 function model_differences(array $existing, array $v): array
 {
     $diff = [];
+    if ((string) ($existing['main_category'] ?? '') !== $v['main_category']) {     // '' = the model has none yet
+        $diff['main_category'] = [(string) ($existing['main_category'] ?? ''), $v['main_category']];
+    }
     if (match_key((string) $existing['category']) !== match_key($v['category'])) {
         $diff['category'] = [(string) $existing['category'], $v['category']];
     }
@@ -260,6 +289,22 @@ function is_busy_error(PDOException $e): bool
 }
 
 /**
+ * Stop with a clear message when the database has no main_category column yet - the PHP files
+ * were updated but migrations/002_womens_mens_categories.sql has not been run. Pages that show
+ * or save the main category call this right after their sign-in check.
+ */
+function require_main_categories(PDO $pdo): void
+{
+    if ($pdo->query("SHOW COLUMNS FROM shoes LIKE 'main_category'")->fetch() !== false) {
+        return;
+    }
+    error_log('shoes.main_category is missing: run migrations/002_womens_mens_categories.sql');
+    http_response_code(500);
+    exit("The database needs a small update for the Women's Shoes and Men's Shoes categories. "
+       . 'Run migrations/002_womens_mens_categories.sql (see README, "Upgrading to Women\'s and Men\'s Shoes"), then reload this page.');
+}
+
+/**
  * SQL that turns a bound value into the same matching key the database stores
  * (lower case, spaces squeezed and trimmed - see brand_key / name_key in migration 001).
  */
@@ -275,7 +320,7 @@ function sql_match_key(string $param): string
 function find_shoe_model(PDO $pdo, string $brand, string $name, bool $lock = false): ?array
 {
     $st = $pdo->prepare(
-        'SELECT id, name, brand, category, price, image_url FROM shoes
+        'SELECT id, name, brand, main_category, category, price, image_url FROM shoes
           WHERE brand_key = ' . sql_match_key(':brand') . ' AND name_key = ' . sql_match_key(':name')
         . ($lock ? ' FOR UPDATE' : '')
     );
@@ -286,7 +331,7 @@ function find_shoe_model(PDO $pdo, string $brand, string $name, bool $lock = fal
 function get_shoe_model(PDO $pdo, int $shoeId, bool $lock = false): ?array
 {
     $st = $pdo->prepare(
-        'SELECT id, name, brand, category, price, image_url FROM shoes WHERE id = :id' . ($lock ? ' FOR UPDATE' : '')
+        'SELECT id, name, brand, main_category, category, price, image_url FROM shoes WHERE id = :id' . ($lock ? ' FOR UPDATE' : '')
     );
     $st->execute([':id' => $shoeId]);
     return $st->fetch() ?: null;
@@ -296,8 +341,8 @@ function get_shoe_model(PDO $pdo, int $shoeId, bool $lock = false): ?array
 function insert_shoe_model(PDO $pdo, array $v): int
 {
     try {
-        $pdo->prepare('INSERT INTO shoes (name, brand, category, price) VALUES (:n, :b, :c, :p)')
-            ->execute([':n' => $v['name'], ':b' => $v['brand'], ':c' => $v['category'], ':p' => $v['price']]);
+        $pdo->prepare('INSERT INTO shoes (name, brand, main_category, category, price) VALUES (:n, :b, :m, :c, :p)')
+            ->execute([':n' => $v['name'], ':b' => $v['brand'], ':m' => $v['main_category'], ':c' => $v['category'], ':p' => $v['price']]);
     } catch (PDOException $e) {
         if (is_duplicate_key($e, 'uq_shoe_model')) {
             throw new UserError('"' . $v['brand'] . ' ' . $v['name'] . '" already exists.', 'duplicate_model');
@@ -307,12 +352,13 @@ function insert_shoe_model(PDO $pdo, array $v): int
     return (int) $pdo->lastInsertId();
 }
 
-/** Change a model's shared details (name, brand, category, price). */
+/** Change a model's shared details (name, brand, main category, category, price). */
 function update_shoe_model(PDO $pdo, int $shoeId, array $v): void
 {
     try {
-        $st = $pdo->prepare('UPDATE shoes SET name = :n, brand = :b, category = :c, price = :p WHERE id = :id');
-        $st->execute([':n' => $v['name'], ':b' => $v['brand'], ':c' => $v['category'], ':p' => $v['price'], ':id' => $shoeId]);
+        $st = $pdo->prepare('UPDATE shoes SET name = :n, brand = :b, main_category = :m, category = :c, price = :p WHERE id = :id');
+        $st->execute([':n' => $v['name'], ':b' => $v['brand'], ':m' => $v['main_category'], ':c' => $v['category'],
+                      ':p' => $v['price'], ':id' => $shoeId]);
     } catch (PDOException $e) {
         if (is_duplicate_key($e, 'uq_shoe_model')) {
             throw new UserError('Another model named "' . $v['brand'] . ' ' . $v['name'] . '" already exists.', 'duplicate_model');
@@ -402,7 +448,7 @@ function create_colorway(PDO $pdo, int $shoeId, array $v, ?string $imagePath, in
  *   $shoe          validate_shoe_fields() values
  *   $colorways     list of ['v' => validate_colorway_fields() values, 'image_token' => staged image token or null]
  *   $existingId    the existing model the form was checked against, or null to create a new model
- *   $updateDetails true = also set the existing model's category and price to $shoe's
+ *   $updateDetails true = also set the existing model's main category, category and price to $shoe's
  * Returns ['shoe_id' => int, 'created' => bool, 'brand' => ..., 'name' => ...,
  *          'colorways' => [['id', 'name', 'sizes', 'pairs'], ...]].
  */
@@ -426,8 +472,9 @@ function save_shoe_with_colorways(PDO $pdo, array $shoe, array $colorways, ?int 
         if ($model === null) {
             throw new UserError('That shoe model was deleted a moment ago. Nothing was saved.', 'missing');
         }
-        if ($updateDetails) {      // name and brand stay exactly as stored; only category and price change
+        if ($updateDetails) {      // name and brand stay exactly as stored; only main category, category and price change
             update_shoe_model($pdo, $existingId, ['name' => $model['name'], 'brand' => $model['brand'],
+                                                  'main_category' => $shoe['main_category'],
                                                   'category' => $shoe['category'], 'price' => $shoe['price']]);
         }
         $shoeId = $existingId;

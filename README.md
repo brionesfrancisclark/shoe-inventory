@@ -6,6 +6,7 @@
 
 Each shoe model can come in several **colorways** (for example Nike Air Force 1 in *White* and *Black*). Each colorway has its own photo, its own sizes and its own stock.
 
+- Every model belongs to **Women's Shoes** or **Men's Shoes**. The Shoes and Inventory pages can show all shoes, or just one of the two.
 - Sizes with 0 pairs are marked in red and labelled **OUT**.
 - Sizes that are running low are marked in amber and labelled **LOW**.
 - Every change to the stock is written to a history.
@@ -21,7 +22,7 @@ Built with **PHP 8.1+ (PDO)**, **MariaDB** (included in XAMPP) and **Bootstrap 5
 
 - **Inventory** (`admin.php`): one row per shoe model.
   - Open a model to see each colorway with its photo and a grid of sizes showing the pairs left.
-  - Summary cards, live search, category and stock filters, sorting, and 10 models per page.
+  - Tabs for **All Shoes**, **Women's Shoes** and **Men's Shoes**, summary cards, live search, category and stock filters, sorting, and 10 models per page.
   - **Edit stock** on a colorway lets you choose:
     - **Stock in (+)**: pairs arrived;
     - **Stock out (-)**: pairs sold, returned or damaged;
@@ -31,8 +32,13 @@ Built with **PHP 8.1+ (PDO)**, **MariaDB** (included in XAMPP) and **Bootstrap 5
 - **Automatic grouping**: a model is recognised by **brand + model name**. Capitals and extra spaces don't matter.
   - Adding "nike / air force 1" when "Nike / Air Force 1" exists adds the new colorway to the existing model, so no duplicate model is created.
   - A colorway that already exists is refused, with a link to open the existing one.
-  - If the category or price you typed differs from the existing model, you choose whether to keep or update it.
-- **Add Shoe** (`add-shoe.php`): enter a model once, then one or more colorways. Each colorway has:
+  - If the main category, category or price you typed differs from the existing model, you choose whether to keep or update it.
+- **Women's Shoes and Men's Shoes** (the two main categories):
+  - every model belongs to one of them. It is chosen when the model is added, and can be changed with **Edit model details** on the Inventory page;
+  - the existing **category** (Running, Basketball, Casual, ...) stays as it is, so a model can be *Women's Shoes · Running*;
+  - the Shoes and Inventory pages have tabs for **All Shoes**, **Women's Shoes** and **Men's Shoes**. Search and the filters work across both, and each tab shows how many models match. A tab can be bookmarked, for example `shoe.php?main=women`;
+  - models added before this feature have no main category yet. They stay under **All Shoes**, and the Inventory page lists them under an amber **Unassigned** tab until someone picks one.
+- **Add Shoe** (`add-shoe.php`): enter a model once, with its main category, then one or more colorways. Each colorway has:
   - a photo, uploaded or taken from a link (links are checked before saving);
   - sizes, from tick boxes for US 7.0–11.0 or extra sizes you type in;
   - starting stock, with **Quick fill** to set every size at once.
@@ -43,7 +49,7 @@ Built with **PHP 8.1+ (PDO)**, **MariaDB** (included in XAMPP) and **Bootstrap 5
   - replace or remove its photo;
   - add sizes, or remove sizes that have 0 pairs;
   - delete the colorway (a model's last colorway can't be deleted).
-- **Shoes** (`shoe.php`): every model as a card with its photo. Open one to see its colorways, then click a colorway to switch the photo and sizes, or click a size to see how many pairs are left.
+- **Shoes** (`shoe.php`): every model as a card with its photo, under **All Shoes**, **Women's Shoes** or **Men's Shoes**. Open one to see its main category and colorways, then click a colorway to switch the photo and sizes, or click a size to see how many pairs are left.
 - **History** (`inventory-history.php`): every stock change, showing who made it, when, what kind it was, the count before and after, and the note. You can filter by text, type, person and date. Entries stay even after a shoe is deleted.
 - **Users & permissions** (`users.php`, `user-permissions.php`, Admin only):
   - create staff accounts and give each person a checklist of what they may do;
@@ -63,7 +69,7 @@ The **Admin** can do everything. **Staff** can only do what the Admin ticked for
 | See shoes, colorways and photos (Shoes page)      |   ✓   | View Shoes / View Colorways                  |
 | Add new shoe models                               |   ✓   | Add Shoes                                    |
 | Add colorways to an existing model                |   ✓   | Add Colorways                                |
-| Change a model's name, brand, category or price   |   ✓   | Edit Shoes                                   |
+| Change a model's name, brand, categories or price |   ✓   | Edit Shoes                                   |
 | Rename a colorway, add or remove its sizes        |   ✓   | Edit Colorways                               |
 | Add a photo when adding a shoe or colorway        |   ✓   | Upload Shoe Images                           |
 | Replace or remove a colorway's photo              |   ✓   | Change Shoe Images                           |
@@ -73,6 +79,7 @@ The **Admin** can do everything. **Staff** can only do what the Admin ticked for
 - **New staff accounts start view-only:** View Shoes, View Colorways, View Inventory, View Low Stock and View Out-of-Stock Items.
 - **Prerequisites are ticked for you:** ticking a permission also ticks what it needs. For example, Stock In also ticks View Inventory.
 - **The server checks every request,** so hiding a button is never the only protection.
+- **Main categories need no extra permission:** a new model's Women's / Men's choice is part of **Add Shoes**, and changing it later is part of **Edit Shoes**, exactly like its category and price.
 
 ---
 
@@ -84,6 +91,7 @@ shoe-inventory/
 ├── schema.sql              Creates all the tables for a NEW installation
 ├── migrations/
 │   ├── 001_colorways_permissions.sql   Upgrades an OLD installation (see "Upgrading an old copy")
+│   ├── 002_womens_mens_categories.sql  Adds Women's / Men's Shoes (see "Upgrading to Women's and Men's Shoes")
 │   └── verify_inventory.sql            Read-only check of shoes, stock and accounts
 ├── assets/
 │   ├── logo.png            The Dazzling Footwear logo (menu bar and sign-in page)
@@ -94,7 +102,7 @@ shoe-inventory/
 ├── index.php               Start page (sends you to sign-in or to your first page)
 ├── login.php / logout.php  Sign in (+ the one-time "create the Admin" form) / sign out
 ├── admin.php               Inventory
-├── shoe.php                Shoes list and shoe details
+├── shoe.php                Shoes list (All / Women's / Men's) and shoe details
 ├── add-shoe.php            Add a shoe model with its colorways
 ├── colorway.php            Edit or delete a colorway
 ├── inventory-history.php   Stock history
@@ -233,6 +241,8 @@ cd C:\xampp\htdocs\shoe-inventory
 git pull
 ```
 
+Some updates also need a small database update. If a page says **"The database needs a small update…"** after a `git pull`, follow the section it names (for example *Upgrading to Women's and Men's Shoes*).
+
 If you changed `db.php` (for example to add your database password) and Git complains about local changes, run these three commands in order. They put your own changes back on top:
 
 ```
@@ -293,11 +303,14 @@ Nobody should use the app while you do this. Run each command in Command Prompt.
    ```
    C:\xampp\mysql\bin\mysql.exe -uroot --default-character-set=utf8mb4 shoe_inventory -e "source C:/xampp/htdocs/shoe-inventory/migrations/verify_inventory.sql" > C:\shoe-backup\check_before.txt
    ```
-4. **Upgrade the database:**
+4. **Upgrade the database** (two files, in this order):
    ```
    C:\xampp\mysql\bin\mysql.exe -uroot --default-character-set=utf8mb4 --abort-source-on-error shoe_inventory -e "source C:/xampp/htdocs/shoe-inventory/migrations/001_colorways_permissions.sql"
+
+   C:\xampp\mysql\bin\mysql.exe -uroot --default-character-set=utf8mb4 --abort-source-on-error shoe_inventory -e "source C:/xampp/htdocs/shoe-inventory/migrations/002_womens_mens_categories.sql"
    ```
-   - Only one Admin is allowed. If the old copy has more, this stops with "more than one admin account" and changes nothing. Make the extra ones Staff on the old Users page, then run it again.
+   - Only one Admin is allowed. If the old copy has more, the first file stops with "more than one admin account" and changes nothing. Make the extra ones Staff on the old Users page, then run it again.
+   - The second file adds Women's Shoes / Men's Shoes. See *Upgrading to Women's and Men's Shoes* for what it does.
 5. **Check again and compare:**
    ```
    C:\xampp\mysql\bin\mysql.exe -uroot --default-character-set=utf8mb4 shoe_inventory -e "source C:/xampp/htdocs/shoe-inventory/migrations/verify_inventory.sql" > C:\shoe-backup\check_after.txt
@@ -305,13 +318,46 @@ Nobody should use the app while you do this. Run each command in Command Prompt.
    fc C:\shoe-backup\check_before.txt C:\shoe-backup\check_after.txt
    ```
    It must say **"FC: no differences encountered"**. That means no shoe, stock row or account changed.
-6. Open the app and sign in.
+6. Open the app and sign in. Then do step 6 of *Upgrading to Women's and Men's Shoes*.
 
 **If step 4 shows an `ERROR`, or step 5 finds differences, undo the upgrade:**
 1. In phpMyAdmin, delete the `shoe_inventory` database.
 2. Create it again, empty.
 3. Load `before_upgrade.sql` into it, the same way as when moving the data.
 4. Put back the folder from `app-before-upgrade`.
+
+---
+
+## Upgrading to Women's and Men's Shoes
+
+Copies set up before this feature need one small database update, `migrations/002_womens_mens_categories.sql`. It adds a **main category** column to the existing `shoes` table, and keeps every shoe, colorway, stock quantity, history entry and account exactly as it is. A new installation from `schema.sql` already has it, so skip this section there.
+
+Until the update is done, the Inventory, Shoes, Add Shoe and Edit colorway pages show **"The database needs a small update…"** instead of opening. Run each command in Command Prompt.
+
+1. **Back up first** (create the folder `C:\shoe-backup` if you don't have it):
+   ```
+   C:\xampp\mysql\bin\mysqldump.exe -uroot --default-character-set=utf8mb4 --single-transaction --routines --triggers --result-file=C:\shoe-backup\before_002.sql shoe_inventory
+   ```
+2. **Get the new files** (`git pull`, or the ZIP), but keep your own `db.php`.
+3. **Save a check of the data now.** This is read-only:
+   ```
+   C:\xampp\mysql\bin\mysql.exe -uroot --default-character-set=utf8mb4 shoe_inventory -e "source C:/xampp/htdocs/shoe-inventory/migrations/verify_inventory.sql" > C:\shoe-backup\check_before_002.txt
+   ```
+4. **Update the database:**
+   ```
+   C:\xampp\mysql\bin\mysql.exe -uroot --default-character-set=utf8mb4 --abort-source-on-error shoe_inventory -e "source C:/xampp/htdocs/shoe-inventory/migrations/002_womens_mens_categories.sql"
+   ```
+   It prints a short report. Every column ending in `_expect_0` must show `0`. Running it a second time is safe: it skips what is already done.
+5. **Check again and compare:**
+   ```
+   C:\xampp\mysql\bin\mysql.exe -uroot --default-character-set=utf8mb4 shoe_inventory -e "source C:/xampp/htdocs/shoe-inventory/migrations/verify_inventory.sql" > C:\shoe-backup\check_after_002.txt
+
+   fc C:\shoe-backup\check_before_002.txt C:\shoe-backup\check_after_002.txt
+   ```
+   It must say **"FC: no differences encountered"**.
+6. **Put your existing models under Women's Shoes or Men's Shoes.** The update can't know which is which, so they start without a main category. Sign in as the Admin and open **Inventory**: a yellow note says how many models have none yet. Click **Show them**, then for each one: open it, click **Edit model details**, choose the **Main category** and click **Save details**. Until then they are only listed under **All Shoes**.
+
+**If step 4 shows an `ERROR`, or step 5 finds differences:** restore `before_002.sql` the same way as when moving the data, and put back the previous files. (The end of `002_womens_mens_categories.sql` also lists the commands that undo it by hand.)
 
 ---
 
@@ -331,7 +377,7 @@ Then open **http://localhost:8000/**. Keep the Command Prompt window open while 
 ## Using the system
 
 **Add a shoe**
-1. Open **Add Shoe** and enter the model name, brand, category and price.
+1. Open **Add Shoe** and enter the model name, brand, main category (**Women's Shoes** or **Men's Shoes**), category and price.
 2. Fill in the first colorway:
    - its name;
    - a photo (optional);
@@ -355,6 +401,10 @@ Each size shows what it will become before you save. Stock can never go below 0.
 
 **Look at a shoe**: open **Shoes**, click a model, then click a colorway and a size.
 
+**Browse Women's or Men's shoes**: on **Shoes** or **Inventory**, click **Women's Shoes** or **Men's Shoes** above the list. **All Shoes** shows everything. The search box and the filters still work, and the number on each tab shows how many models match, so a search also tells you what the other tab has. On a shoe's page, click its main category to see the others in it.
+
+**Change a model's main category**: on **Inventory**, open the model, click **Edit model details**, choose the **Main category** and click **Save details**.
+
 **Check who changed what**: open **History**. On a colorway, the **History** link shows only that colorway's changes.
 
 **Delete**: open a model on **Inventory**.
@@ -375,6 +425,7 @@ Both ask for confirmation first. The history keeps a record.
 | Time zone                              | `APP_TIMEZONE` in `db.php`                     | `Asia/Manila` |
 | Low-stock threshold                    | `LOW_STOCK_LIMIT` in `inventory-lib.php`       | 3 pairs (1–3 = low, 0 = out) |
 | Standard sizes on the forms            | `STANDARD_SIZES` in `inventory-lib.php`        | US 7.0–11.0 in half sizes |
+| Names of the main categories           | `MAIN_CATEGORIES` in `inventory-lib.php` (a third one, such as Kids' Shoes, also needs a database change) | Women's Shoes, Men's Shoes |
 | Most pairs in one size                 | `MAX_QTY` in `inventory-lib.php`               | 100,000 |
 | Colorways per Add Shoe save            | `MAX_COLORWAYS_PER_FORM` in `inventory-lib.php`| 20 |
 | Photo size limit                       | `IMAGE_MAX_BYTES` in `image-lib.php`           | 5 MB (JPEG, PNG, WebP, GIF) |
@@ -414,7 +465,9 @@ Both ask for confirmation first. The history keeps a record.
 | "Not Found" / "Object not found!" | The folder must be exactly `C:\xampp\htdocs\shoe-inventory`, with `login.php` directly inside it (not inside `shoe-inventory-main`). |
 | "Database connection failed. Check db.php credentials." | Start **MySQL** in XAMPP. Check `DB_NAME`, `DB_USER` and `DB_PASS` in `db.php`. |
 | 'The "users" table is missing. Run schema.sql…' | Import `schema.sql` into the `shoe_inventory` database (setup step 3). |
-| Import says "Stopped: tables already exist" | `schema.sql` is only for an **empty** database. For an old database, see *Upgrading an old copy*. To start completely fresh, delete the `shoe_inventory` database in phpMyAdmin (**this deletes all data**), create it again and import. |
+| Import says "Stopped: tables already exist" | `schema.sql` is only for an **empty** database. For an existing database, see *Upgrading an old copy* and *Upgrading to Women's and Men's Shoes*. To start completely fresh, delete the `shoe_inventory` database in phpMyAdmin (**this deletes all data**), create it again and import. |
+| "The database needs a small update for the Women's Shoes and Men's Shoes categories" | The files are newer than the database. Follow *Upgrading to Women's and Men's Shoes* (it runs `migrations/002_womens_mens_categories.sql`). |
+| A shoe is missing from Women's Shoes / Men's Shoes | It has no main category yet, so it is only under **All Shoes**. Give it one with **Edit model details** on the Inventory page (the **Unassigned** tab lists them all). |
 | Apache won't start (port 80 or 443 in use) | Another program (Skype, IIS, VMware) is using the port. Close it, or change Apache's port in XAMPP → Config → `httpd.conf` and then use `http://localhost:8080/shoe-inventory/`. |
 | MySQL won't start (port 3306 in use) | Another database program is running. Stop it in Windows **Services**, then click Start again. |
 | `could not find driver` | In `C:\xampp\php\php.ini` remove the `;` in front of `extension=pdo_mysql`, then restart Apache. |

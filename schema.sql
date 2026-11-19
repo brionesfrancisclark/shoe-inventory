@@ -2,7 +2,8 @@
 -- Footwear Inventory - FRESH INSTALL ONLY
 --
 -- Creates every table in an EMPTY database. It refuses to run if any of the app's tables
--- already exist - for an existing database run migrations/001_colorways_permissions.sql.
+-- already exist - for an existing database run the files in migrations/ instead
+-- (001_colorways_permissions.sql, then 002_womens_mens_categories.sql; see README).
 --
 --   C:\xampp\mysql\bin\mysql.exe -uroot -e "CREATE DATABASE shoe_inventory CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci"
 --   C:\xampp\mysql\bin\mysql.exe -uroot --default-character-set=utf8mb4 --abort-source-on-error shoe_inventory -e "source C:/xampp/htdocs/shoe-inventory/schema.sql"
@@ -25,7 +26,7 @@ BEGIN NOT ATOMIC
                 WHERE TABLE_SCHEMA = DATABASE()
                   AND TABLE_NAME IN ('users', 'shoes', 'shoe_sizes', 'shoe_colorways', 'stock_movements',
                                      'permissions', 'user_permissions', 'schema_migrations')) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Stopped: tables already exist. Use migrations/001_colorways_permissions.sql instead.';
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Stopped: tables already exist. Use the files in migrations/ instead (see README).';
     END IF;
 END$$
 DELIMITER ;
@@ -50,12 +51,17 @@ CREATE TABLE users (
     UNIQUE KEY uq_single_admin (admin_slot)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Shoe models: brand, name, category and price are shared by all colorways.
+-- Shoe models: brand, name, main category, category and price are shared by all colorways.
 -- brand_key + name_key make "Nike / Air Force 1" and " NIKE / air  force 1 " the same model.
+-- main_category: 'women' = Women's Shoes, 'men' = Men's Shoes (the app requires one for every
+-- model it saves; NULL only for models from before migration 002). The CHECK also refuses other
+-- values when the server is not in strict mode, where an ENUM alone would store an empty value.
 CREATE TABLE shoes (
     id        INT UNSIGNED  NOT NULL AUTO_INCREMENT,
     name      VARCHAR(150)  NOT NULL,
     brand     VARCHAR(100)  NOT NULL,
+    main_category ENUM('women', 'men') NULL DEFAULT NULL
+              COMMENT 'women = Women''s Shoes, men = Men''s Shoes; NULL = not chosen yet',
     category  VARCHAR(100)  NOT NULL,
     price     DECIMAL(10,2) NOT NULL,
     image_url VARCHAR(500)  DEFAULT NULL,
@@ -66,7 +72,9 @@ CREATE TABLE shoes (
               AS (LOWER(TRIM(REGEXP_REPLACE(name, '[[:space:]]+', ' ')))) STORED
               COMMENT 'model name in lower case, spaces tidied (model grouping)',
     PRIMARY KEY (id),
-    UNIQUE KEY uq_shoe_model (brand_key, name_key)
+    UNIQUE KEY uq_shoe_model (brand_key, name_key),
+    KEY idx_shoes_main_category (main_category),
+    CONSTRAINT chk_shoe_main_category CHECK (main_category IS NULL OR main_category IN ('women', 'men'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Colorways of a model, each with its own name, description and image.
@@ -185,7 +193,7 @@ START TRANSACTION;
 INSERT INTO permissions (code, category, label, description, default_for_new_staff, sort_order) VALUES
     ('shoes.view',             'Products & Shoe Colorways', 'View Shoes',              'See shoe models and open the shoe details page.', 1, 10),
     ('shoes.add',              'Products & Shoe Colorways', 'Add Shoes',               'Create new shoe models with their first colorways and starting stock.', 0, 20),
-    ('shoes.edit',             'Products & Shoe Colorways', 'Edit Shoes',              'Change a model''s name, brand, category and price.', 0, 30),
+    ('shoes.edit',             'Products & Shoe Colorways', 'Edit Shoes',              'Change a model''s name, brand, main category (Women''s or Men''s Shoes), category and price.', 0, 30),
     ('shoes.delete',           'Products & Shoe Colorways', 'Delete Shoes',            'Delete a whole shoe model and its stock. Stock history is kept.', 0, 40),
     ('colorways.view',         'Products & Shoe Colorways', 'View Colorways',          'See each model''s colorways and their images.', 1, 50),
     ('colorways.add',          'Products & Shoe Colorways', 'Add Colorways',           'Add new colorways, with sizes and starting stock, to existing models.', 0, 60),
@@ -225,10 +233,11 @@ UPDATE permissions p
   JOIN permissions r ON r.code = d.needs
    SET p.requires_id = r.id;
 
--- A fresh install already has the final structure, so the migration has nothing to do.
+-- A fresh install already has the final structure, so the migrations have nothing to do.
 INSERT INTO schema_migrations (name, applied_at) VALUES
     ('001_existing_staff_permissions', UNIX_TIMESTAMP()),
-    ('001_colorways_permissions',      UNIX_TIMESTAMP());
+    ('001_colorways_permissions',      UNIX_TIMESTAMP()),
+    ('002_womens_mens_categories',     UNIX_TIMESTAMP());
 
 COMMIT;
 

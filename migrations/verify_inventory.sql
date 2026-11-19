@@ -1,9 +1,9 @@
 -- =====================================================================================
 -- Footwear Inventory - READ-ONLY check. Changes nothing; safe to run any time.
 --
--- Run it BEFORE and AFTER migration 001 and compare: every number and fingerprint in
--- parts 1 and 2 must be identical (the migration must not change any shoe, stock
--- quantity or account).
+-- Run it BEFORE and AFTER a migration (001 or 002) and compare: every number and fingerprint
+-- in parts 1 and 2 must be identical (a migration must not change any shoe, stock quantity
+-- or account).
 --   C:\xampp\mysql\bin\mysql.exe -uroot --default-character-set=utf8mb4 --abort-source-on-error shoe_inventory -e "source C:/xampp/htdocs/shoe-inventory/migrations/verify_inventory.sql"
 -- =====================================================================================
 

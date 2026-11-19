@@ -190,6 +190,28 @@ function render_header(string $title, string $active = '', bool $nav = true, str
             min-width: 2.2rem; text-align: center; font-weight: 600; border-radius: 50rem;
         }
 
+        /* ---------- Main categories: All Shoes / Women's Shoes / Men's Shoes (Shoes and Inventory pages) ---------- */
+        .cat-nav { display: flex; flex-wrap: wrap; gap: .5rem; }
+        .cat-pill {
+            display: inline-flex; align-items: center; gap: .5rem; padding: .45rem .45rem .45rem 1.1rem;
+            border: 1px solid #cacacb; border-radius: 50rem; background: #fff; color: var(--ink);
+            font-weight: 600; line-height: 1.25; text-decoration: none; white-space: nowrap;
+            transition: border-color .15s ease, background-color .15s ease, color .15s ease;
+        }
+        .cat-pill:hover { border-color: var(--ink); color: var(--ink); }
+        .cat-pill[aria-current="page"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+        .cat-count {
+            min-width: 1.7rem; padding: .15rem .5rem; border-radius: 50rem; background: var(--soft);
+            color: var(--ink-2); font-size: .72rem; font-weight: 700; text-align: center;
+        }
+        .cat-pill[aria-current="page"] .cat-count { background: rgba(255, 255, 255, .2); color: #fff; }
+        .cat-pill.is-unset { border-color: #f2d27a; background: #fff6dc; color: #8a6500; }      /* models with no main category yet */
+        .cat-pill.is-unset:hover { border-color: #8a6500; }
+        .cat-pill.is-unset[aria-current="page"] { background: #8a6500; border-color: #8a6500; color: #fff; }
+        @media (max-width: 575.98px) {
+            .cat-pill { padding: .4rem .4rem .4rem .9rem; font-size: .875rem; }
+        }
+
         /* ---------- Add Shoe: size tiles ---------- */
         .size-tile {
             padding: .6rem .7rem .7rem; background: #f7f7f7; border: 1px solid #ececec; border-radius: 12px;

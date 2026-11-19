@@ -5,7 +5,9 @@ require_once __DIR__ . '/inventory-lib.php';
 
 /*
  * Shoes (internal - staff and admin only, needs "View Shoes"):
- *   shoe.php               every shoe model as a card, with search and a category filter
+ *   shoe.php               every shoe model as a card: All Shoes / Women's Shoes / Men's Shoes,
+ *                          with search and a category filter
+ *   shoe.php?main=women    opens on Women's Shoes (main=men: Men's Shoes)
  *   shoe.php?id=N          one model: pick a colorway to see its own photo and sizes, then pick a size
  *   shoe.php?id=N&colorway=M  opens with that colorway selected
  * What is shown follows the account's permissions: colorways and photos need "View Colorways",
@@ -13,6 +15,7 @@ require_once __DIR__ . '/inventory-lib.php';
  */
 
 $user         = require_permission('shoes.view');
+require_main_categories($pdo);
 $canColorways = can('colorways.view');
 $canViewInv   = can('inventory.view');
 $showLow      = can('inventory.low_stock');
@@ -83,6 +86,7 @@ if ($shoeId > 0) {
         redirect('shoe.php');
     }
     $label     = $model['brand'] . ' ' . $model['name'];
+    $mainLabel = main_category_label($model['main_category']);
     $colorways = [];
     if ($canColorways) {
         foreach (colorways_of($pdo, $shoeId) as $c) {
@@ -112,6 +116,7 @@ if ($shoeId > 0) {
             <p class="small text-muted text-uppercase fw-semibold mb-1" style="letter-spacing:.08em"><?= e($model['brand']) ?></p>
             <h1 class="page-title mb-1" id="shoe-title"><?= e($model['name']) ?></h1>
             <p class="page-sub mb-0">
+                <?php if ($mainLabel !== ''): ?><a class="fw-semibold" href="shoe.php?main=<?= e($model['main_category']) ?>" id="shoe-main"><?= e($mainLabel) ?></a> &middot;<?php endif; ?>
                 <?= e($model['category']) ?> &middot; <strong class="text-dark">&#8369;<?= number_format((float) $model['price'], 2) ?></strong>
                 <?php if ($canColorways): ?>&middot; <?= count($colorways) ?> colorway<?= count($colorways) === 1 ? '' : 's' ?><?php endif; ?>
                 <?php if ($canViewInv && $canColorways): ?>&middot; <?= $total ?> pair<?= $total === 1 ? '' : 's' ?> in stock<?php endif; ?>
@@ -246,10 +251,10 @@ if ($shoeId > 0) {
 }
 
 /* =====================================================================================
-   All shoe models
+   All shoe models (?main=women / ?main=men opens on that main category)
    ===================================================================================== */
 $models = $pdo->query(
-    'SELECT s.id, s.name, s.brand, s.category, s.price,
+    'SELECT s.id, s.name, s.brand, s.main_category, s.category, s.price,
             (SELECT COUNT(*) FROM shoe_colorways c WHERE c.shoe_id = s.id) AS colorways,
             (SELECT COALESCE(SUM(z.quantity), 0) FROM shoe_sizes z WHERE z.shoe_id = s.id) AS pairs
        FROM shoes s
@@ -264,13 +269,21 @@ if ($canColorways) {
 $categories = array_values(array_unique(array_column($models, 'category')));
 sort($categories, SORT_NATURAL | SORT_FLAG_CASE);
 
-render_header('Shoes', 'shoes', true, $css);
+// Main category tabs: All Shoes, Women's Shoes, Men's Shoes - each with how many models it has.
+$mainFilter = main_category_param($_GET['main'] ?? null);
+$mainTabs   = ['' => 'All Shoes'] + MAIN_CATEGORIES;
+$mainCounts = ['' => count($models)];
+foreach (array_keys(MAIN_CATEGORIES) as $code) {
+    $mainCounts[$code] = count(array_filter($models, static fn (array $m): bool => $m['main_category'] === $code));
+}
+
+render_header($mainTabs[$mainFilter], 'shoes', true, $css);
 ?>
 <main id="main" class="container pb-5">
     <?php render_flash(); ?>
     <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
         <div>
-            <h1 class="page-title mb-1">Shoes</h1>
+            <h1 class="page-title mb-1" id="shoe-heading"><?= e($mainTabs[$mainFilter]) ?></h1>
             <p class="page-sub mb-0">Every shoe model. Open one to see its colorways, photos and sizes.</p>
         </div>
         <?php if (can('shoes.add') || $canAddCw): ?><a href="add-shoe.php" class="btn btn-success">+ Add New Shoe</a><?php endif; ?>
@@ -279,6 +292,14 @@ render_header('Shoes', 'shoes', true, $css);
     <?php if (!$models): ?>
         <div class="card shadow-sm"><div class="card-body text-center py-5 text-muted">No shoes yet.</div></div>
     <?php else: ?>
+    <nav class="cat-nav mb-3" id="main-nav" aria-label="Main categories">
+        <?php foreach ($mainTabs as $code => $tab): ?>
+            <a class="cat-pill" href="shoe.php<?= $code !== '' ? '?main=' . e($code) : '' ?>" data-main="<?= e($code) ?>" data-label="<?= e($tab) ?>"<?= $code === $mainFilter ? ' aria-current="page"' : '' ?>>
+                <?= e($tab) ?><span class="cat-count"><span data-count><?= $mainCounts[$code] ?></span><span class="visually-hidden"> models</span></span>
+            </a>
+        <?php endforeach; ?>
+    </nav>
+
     <div class="row g-2 align-items-end mb-3">
         <div class="col-12 col-md-6">
             <label for="shoe-search" class="form-label small mb-1">Search</label>
@@ -305,14 +326,17 @@ render_header('Shoes', 'shoes', true, $css);
                     break;
                 }
             }
-            $search = mb_strtolower($m['brand'] . ' ' . $m['name'] . ' ' . $m['category'] . ' ' . implode(' ', array_column($sw, 'name'))); ?>
-            <div class="col-12 col-sm-6 col-lg-4 col-xl-3 shoe-item" data-search="<?= e($search) ?>" data-category="<?= e($m['category']) ?>">
+            $search = mb_strtolower($m['brand'] . ' ' . $m['name'] . ' ' . $m['category'] . ' ' . implode(' ', array_column($sw, 'name')));
+            $main   = (string) $m['main_category'];                  // '' = no main category yet: listed under All Shoes only
+            $inTab  = $mainFilter === '' || $main === $mainFilter; ?>
+            <div class="col-12 col-sm-6 col-lg-4 col-xl-3 shoe-item" data-search="<?= e($search) ?>" data-category="<?= e($m['category']) ?>"
+                 data-main="<?= e($main) ?>"<?= $inTab ? '' : ' hidden' ?>>
                 <a class="card shadow-sm h-100 shoe-card" href="shoe.php?id=<?= $mid ?>">
                     <?= photo_box($cover, '', 'card-photo') ?>
                     <span class="card-body d-block">
                         <span class="small text-muted d-block"><?= e($m['brand']) ?></span>
                         <span class="fw-bold d-block"><?= e($m['name']) ?></span>
-                        <span class="small text-muted d-block"><?= e($m['category']) ?> &middot; &#8369;<?= number_format((float) $m['price'], 2) ?></span>
+                        <span class="small text-muted d-block"><?php if ($main !== ''): ?><?= e(main_category_label($main)) ?> &middot; <?php endif; ?><?= e($m['category']) ?> &middot; &#8369;<?= number_format((float) $m['price'], 2) ?></span>
                         <?php if ($canColorways): ?>
                             <span class="d-flex flex-wrap align-items-center gap-1 mt-2">
                                 <?php foreach (array_slice($sw, 0, 6) as $one): ?><span title="<?= e($one['name']) ?>"><?= photo_box($one['image'], '', 'swatch') ?></span><?php endforeach; ?>
@@ -338,18 +362,67 @@ render_header('Shoes', 'shoes', true, $css);
         return;
     }
     const cat = document.getElementById('shoe-cat');
+    const nav = document.getElementById('main-nav');
+    const pills = Array.from(nav.querySelectorAll('.cat-pill'));
+    const heading = document.getElementById('shoe-heading');
+    const none = document.getElementById('shoe-none');
     const items = Array.from(document.querySelectorAll('.shoe-item'));
+    const picked = pills.find((p) => p.getAttribute('aria-current') === 'page');
+    let main = picked ? picked.dataset.main : '';         // '' = All Shoes, else 'women' / 'men'
+
+    /* Search and the category filter look at every model; the tab counts show how many matches each
+       main category has, and only the chosen main category is listed. */
     function apply() {
         const term = q.value.trim().toLowerCase();
+        const counts = {};
+        pills.forEach((p) => { counts[p.dataset.main] = 0; });
         let shown = 0;
+        let inTab = 0;
         items.forEach((it) => {
+            const m = it.dataset.main;
+            const inMain = main === '' || m === main;
             const ok = (!term || it.dataset.search.indexOf(term) !== -1) && (!cat.value || it.dataset.category === cat.value);
-            it.hidden = !ok;
-            if (ok) { shown++; }
+            if (ok) {
+                counts['']++;
+                if (m !== '' && Object.prototype.hasOwnProperty.call(counts, m)) { counts[m]++; }
+            }
+            if (inMain) { inTab++; }
+            it.hidden = !(ok && inMain);
+            if (ok && inMain) { shown++; }
         });
-        document.getElementById('shoe-none').classList.toggle('d-none', shown !== 0);
-        document.getElementById('shoe-count').textContent = shown + ' of ' + items.length + ' model' + (items.length === 1 ? '' : 's');
+        pills.forEach((p) => { p.querySelector('[data-count]').textContent = counts[p.dataset.main]; });
+        const current = pills.find((p) => p.dataset.main === main);
+        none.textContent = (inTab === 0 && current) ? 'No ' + current.dataset.label + ' yet.' : 'No shoes match your search.';
+        none.classList.toggle('d-none', shown !== 0);
+        document.getElementById('shoe-count').textContent = shown + ' of ' + inTab + ' model' + (inTab === 1 ? '' : 's');
     }
+    function setMain(code) {
+        const pill = pills.find((p) => p.dataset.main === code);
+        if (!pill) {
+            return;
+        }
+        main = code;
+        pills.forEach((p) => {
+            if (p === pill) { p.setAttribute('aria-current', 'page'); } else { p.removeAttribute('aria-current'); }
+        });
+        heading.textContent = pill.dataset.label;
+        const cut = document.title.indexOf(' | ');
+        document.title = pill.dataset.label + (cut === -1 ? '' : document.title.slice(cut));
+        try {                                             // the address shows the tab, so it can be bookmarked or shared
+            const url = new URL(window.location.href);
+            if (code) { url.searchParams.set('main', code); } else { url.searchParams.delete('main'); }
+            history.replaceState(null, '', url.pathname + url.search);
+        } catch (err) { /* old browser: the links still work */ }
+        apply();
+    }
+    nav.addEventListener('click', (ev) => {
+        const a = ev.target.closest('.cat-pill');
+        if (!a || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.altKey || ev.button !== 0) {
+            return;                                       // let "open in new tab" work as usual
+        }
+        ev.preventDefault();
+        setMain(a.dataset.main);
+    });
     q.addEventListener('input', apply);
     cat.addEventListener('change', apply);
     apply();

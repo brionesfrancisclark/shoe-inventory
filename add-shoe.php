@@ -8,12 +8,14 @@ require_once __DIR__ . '/inventory-lib.php';
  *
  * Automatic grouping: if the brand + model name already exists (capitals and extra spaces are
  * ignored), the colorways are added to THAT model - a second copy of the model is never created,
- * and its category / price only change if the user explicitly chooses so.
+ * and its main category (Women's / Men's Shoes) / category / price only change if the user
+ * explicitly chooses so.
  * Everything is saved in one transaction (model, colorways, sizes, stock history, photos):
  * completely, or not at all.
  */
 
 $user        = require_any_permission('shoes.add', 'colorways.add');   // the admin always passes
+require_main_categories($pdo);
 $canNewModel = can('shoes.add');
 $canAddCw    = can('colorways.add');
 $canImages   = can('images.upload');
@@ -36,6 +38,8 @@ if (($_GET['lookup'] ?? '') === '1') {
         'exists'    => true,
         'brand'     => $model['brand'],
         'name'      => $model['name'],
+        'main'      => (string) $model['main_category'],
+        'mainLabel' => main_category_label($model['main_category']),
         'category'  => $model['category'],
         'price'     => number_format((float) $model['price'], 2, '.', ''),
         'colorways' => array_column(colorways_of($pdo, (int) $model['id']), 'name'),
@@ -92,7 +96,13 @@ function saved_message(array $r, bool $updated): string
         return 'Added "' . $model . '" with ' . $n . ' colorway' . ($n === 1 ? '' : 's') . ': ' . implode(', ', $parts) . '.';
     }
     return '"' . $model . '" already existed, so ' . ($n === 1 ? 'the new colorway was' : 'the ' . $n . ' new colorways were')
-        . ' added to it: ' . implode(', ', $parts) . '.' . ($updated ? ' Its category and price were updated.' : '');
+        . ' added to it: ' . implode(', ', $parts) . '.' . ($updated ? ' Its main category, category and price were updated.' : '');
+}
+
+/** "Women's Shoes, Running, ₱5,500.00": a model's shared details, as shown in the keep / update choice. */
+function details_text(?string $main, string $category, string|float $price): string
+{
+    return (main_category_label($main) ?: 'no main category') . ', ' . $category . ', ₱' . number_format((float) $price, 2);
 }
 
 /** One colorway card. $key is the card's number in the form, or __K__ in the template for new cards. */
@@ -254,11 +264,11 @@ function render_colorway_card(string $key, array $card, int $number, bool $canIm
    ===================================================================================== */
 $errors     = [];          // problems shown at the top of the page
 $shoeErrors = [];          // problems with the model fields, by field
-$shoe       = ['name' => '', 'brand' => '', 'category' => '', 'price' => ''];
+$shoe       = ['name' => '', 'brand' => '', 'main_category' => '', 'category' => '', 'price' => ''];
 $cards      = [];          // colorway cards to show again, by card key
 $existing   = null;        // the model that already has this brand + name
 $checkedNew = false;       // true when the brand + name were checked and no such model exists
-$conflict   = [];          // where that model's category / price differ from what was typed
+$conflict   = [];          // where that model's main category / category / price differ from what was typed
 $choice     = '';          // keep | update (only asked when there is a conflict)
 $after      = 'stay';
 
@@ -344,7 +354,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $choice   = form_str($_POST, 'model_details');
                 $choice   = in_array($choice, ['keep', 'update'], true) ? $choice : '';
                 if ($conflict && $choice === '') {
-                    $errors[] = '"' . $label . '" already exists with a different category or price. '
+                    $errors[] = '"' . $label . '" already exists with a different main category, category or price. '
                               . 'Choose below whether to keep its details or update them.';
                 }
                 if ($conflict && $choice === 'update') {
@@ -410,8 +420,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // add-shoe.php?shoe=ID opens the form with that model filled in (to add colorways to it).
     $prefill = filter_var($_GET['shoe'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
     if ($prefill && ($model = get_shoe_model($pdo, (int) $prefill)) !== null) {
-        $shoe = ['name' => $model['name'], 'brand' => $model['brand'], 'category' => $model['category'],
-                 'price' => number_format((float) $model['price'], 2, '.', '')];
+        $shoe = ['name' => $model['name'], 'brand' => $model['brand'], 'main_category' => (string) $model['main_category'],
+                 'category' => $model['category'], 'price' => number_format((float) $model['price'], 2, '.', '')];
         $existing = $model;
     }
 }
@@ -423,7 +433,9 @@ $existingColorways = $existing !== null ? array_column(colorways_of($pdo, (int) 
 // What the server already knows about the typed model, so the page starts in the same state
 // (and stays correct even if a later live lookup fails).
 $existingJson = $existing !== null
-    ? json_encode(['exists' => true, 'brand' => $existing['brand'], 'name' => $existing['name'], 'category' => $existing['category'],
+    ? json_encode(['exists' => true, 'brand' => $existing['brand'], 'name' => $existing['name'],
+                   'main' => (string) $existing['main_category'], 'mainLabel' => main_category_label($existing['main_category']),
+                   'category' => $existing['category'],
                    'price' => number_format((float) $existing['price'], 2, '.', ''), 'colorways' => $existingColorways],
                   JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)
     : ($checkedNew ? '{"exists":false}' : '');
@@ -507,7 +519,17 @@ render_header('Add New Shoe', 'add', true, $css);
                                maxlength="100" required placeholder="e.g. Nike" value="<?= e($shoe['brand']) ?>">
                         <div class="invalid-feedback"><?= e($shoeErrors['brand'] ?? 'Please enter the brand.') ?></div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
+                        <label for="main_category" class="form-label">Main category</label>
+                        <select class="form-select<?= isset($shoeErrors['main_category']) ? ' is-invalid' : '' ?>" id="main_category" name="main_category" required>
+                            <option value=""<?= $shoe['main_category'] === '' ? ' selected' : '' ?> disabled>Choose...</option>
+                            <?php foreach (MAIN_CATEGORIES as $code => $mainName): ?>
+                                <option value="<?= e($code) ?>"<?= $shoe['main_category'] === $code ? ' selected' : '' ?>><?= e($mainName) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="invalid-feedback"><?= e($shoeErrors['main_category'] ?? "Choose Women's Shoes or Men's Shoes.") ?></div>
+                    </div>
+                    <div class="col-md-4">
                         <label for="category" class="form-label">Category</label>
                         <input type="text" class="form-control<?= isset($shoeErrors['category']) ? ' is-invalid' : '' ?>" id="category" name="category"
                                maxlength="100" list="cats" placeholder="Pick one or type a new category" required value="<?= e($shoe['category']) ?>">
@@ -516,7 +538,7 @@ render_header('Add New Shoe', 'add', true, $css);
                         </datalist>
                         <div class="invalid-feedback"><?= e($shoeErrors['category'] ?? 'Please enter a category.') ?></div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label for="price" class="form-label">Price</label>
                         <div class="input-group has-validation">
                             <span class="input-group-text">&#8369;</span>
@@ -533,26 +555,27 @@ render_header('Add New Shoe', 'add', true, $css);
                             <p class="mb-1"><strong><?= e($existing['brand'] . ' ' . $existing['name']) ?></strong>
                                 <?= $canAddCw ? 'already exists - your colorways will be added to it. No second model is created.'
                                               : 'already exists, and your account cannot add colorways to existing models.' ?></p>
-                            <p class="mb-0 small">Category: <?= e($existing['category']) ?> &middot; Price: &#8369;<?= number_format((float) $existing['price'], 2) ?>
+                            <p class="mb-0 small">Main category: <?= e(main_category_label($existing['main_category']) ?: 'not set yet') ?>
+                                &middot; Category: <?= e($existing['category']) ?> &middot; Price: &#8369;<?= number_format((float) $existing['price'], 2) ?>
                                 &middot; Colorways: <?= e($existingColorways ? implode(', ', $existingColorways) : 'none') ?></p>
                         </div>
                     <?php endif; ?>
                 </div>
 
                 <fieldset id="model-choice" class="border rounded p-3 mt-3<?= $showChoice ? '' : ' d-none' ?>">
-                    <legend class="fs-6 fw-semibold float-none w-auto px-1 mb-1">This model already exists with a different category or price</legend>
+                    <legend class="fs-6 fw-semibold float-none w-auto px-1 mb-1">This model already exists with a different main category, category or price</legend>
                     <div class="form-check">
                         <input class="form-check-input" type="radio" name="model_details" id="md-keep" value="keep"
                                <?= $choice === 'keep' ? 'checked' : '' ?><?= $showChoice ? ' required' : ' disabled' ?>>
                         <label class="form-check-label" for="md-keep">Keep its existing details
-                            (<span data-existing><?= $existing ? e($existing['category'] . ', ₱' . number_format((float) $existing['price'], 2)) : '' ?></span>)
+                            (<span data-existing><?= $existing ? e(details_text($existing['main_category'], $existing['category'], $existing['price'])) : '' ?></span>)
                             and just add the colorways</label>
                     </div>
                     <div class="form-check">
                         <input class="form-check-input" type="radio" name="model_details" id="md-update" value="update"
                                <?= $choice === 'update' ? 'checked' : '' ?><?= $showChoice && $canEditShoe ? ' required' : ' disabled' ?>>
                         <label class="form-check-label" for="md-update">Update the model to what I typed
-                            (<span data-typed><?= $showChoice ? e($shoe['category'] . ', ₱' . number_format((float) $shoe['price'], 2)) : '' ?></span>)
+                            (<span data-typed><?= $showChoice ? e(details_text($shoe['main_category'], $shoe['category'], $shoe['price'])) : '' ?></span>)
                             <?= $canEditShoe ? '' : '<span class="text-muted">- needs the "Edit Shoes" permission</span>' ?></label>
                     </div>
                 </fieldset>
@@ -601,6 +624,7 @@ render_header('Add New Shoe', 'add', true, $css);
     const tooBigBox = document.getElementById('too-big');
     const brandEl = document.getElementById('brand');
     const nameEl = document.getElementById('name');
+    const mainEl = document.getElementById('main_category');
     const catEl = document.getElementById('category');
     const priceEl = document.getElementById('price');
     const MAX_CARDS = Number(form.dataset.maxCards);
@@ -619,6 +643,9 @@ render_header('Add New Shoe', 'add', true, $css);
     const plural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
     const money = (v) => Number(v || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const cards = () => Array.from(list.querySelectorAll('.colorway-card'));
+    // "Women's Shoes, Running, ₱5,500.00" - the same wording as details_text() in PHP
+    const detailsText = (mainLabel, category, price) => (mainLabel || 'no main category') + ', ' + category + ', ₱' + money(price);
+    const typedMainLabel = () => (mainEl.value && mainEl.selectedIndex >= 0 ? mainEl.options[mainEl.selectedIndex].text.trim() : '');
 
     /* ---------- sizes and totals ---------- */
     function setTile(tile, on) {
@@ -857,7 +884,8 @@ render_header('Add New Shoe', 'add', true, $css);
                 ? ' already exists - your colorways will be added to it. No second model is created.'
                 : ' already exists, and your account cannot add colorways to existing models.'));
             box.appendChild(p);
-            box.appendChild(el('p', 'mb-0 small', 'Category: ' + existing.category + ' · Price: ₱' + money(existing.price)
+            box.appendChild(el('p', 'mb-0 small', 'Main category: ' + (existing.mainLabel || 'not set yet')
+                + ' · Category: ' + existing.category + ' · Price: ₱' + money(existing.price)
                 + ' · Colorways: ' + (existing.colorways.length ? existing.colorways.join(', ') : 'none')));
             statusBox.appendChild(box);
         } else if (existing) {
@@ -870,15 +898,16 @@ render_header('Add New Shoe', 'add', true, $css);
     }
     function showChoice() {
         const differs = !!(existing && existing.exists)
-            && (norm(catEl.value) !== norm(existing.category) || Number(priceEl.value) !== Number(existing.price));
+            && (mainEl.value !== (existing.main || '') || norm(catEl.value) !== norm(existing.category)
+                || Number(priceEl.value) !== Number(existing.price));
         choiceBox.classList.toggle('d-none', !differs);
         choiceBox.querySelectorAll('input[type=radio]').forEach((radio) => {
             radio.disabled = !differs || (radio.value === 'update' && !canEdit);
             radio.required = differs;
         });
         if (differs) {
-            choiceBox.querySelector('[data-existing]').textContent = existing.category + ', ₱' + money(existing.price);
-            choiceBox.querySelector('[data-typed]').textContent = catEl.value.trim() + ', ₱' + money(priceEl.value);
+            choiceBox.querySelector('[data-existing]').textContent = detailsText(existing.mainLabel, existing.category, existing.price);
+            choiceBox.querySelector('[data-typed]').textContent = detailsText(typedMainLabel(), catEl.value.trim(), priceEl.value);
         }
     }
     function lookup() {
@@ -913,6 +942,7 @@ render_header('Add New Shoe', 'add', true, $css);
         lookupTimer = setTimeout(lookup, 350);
     }));
     [catEl, priceEl].forEach((input) => input.addEventListener('input', showChoice));
+    mainEl.addEventListener('change', showChoice);
     addCardBtn.addEventListener('click', addCard);
 
     list.addEventListener('change', (ev) => {

@@ -15,6 +15,7 @@ require_once __DIR__ . '/inventory-lib.php';
  */
 
 $user        = require_any_permission('colorways.edit', 'images.change', 'colorways.delete');
+require_main_categories($pdo);
 $canDetails  = can('colorways.edit');
 $canPhoto    = can('images.change');
 $canDelete   = can('colorways.delete');
@@ -27,7 +28,7 @@ function load_colorway(PDO $pdo, int $id): ?array
 {
     $st = $pdo->prepare(
         'SELECT c.id, c.shoe_id, c.name, c.description, c.image_path, c.image_url, COALESCE(c.updated_at, 0) AS updated_at,
-                s.brand, s.name AS shoe_name, s.category, s.price,
+                s.brand, s.name AS shoe_name, s.main_category, s.category, s.price,
                 (SELECT COUNT(*) FROM shoe_colorways o WHERE o.shoe_id = c.shoe_id) AS colorway_count
            FROM shoe_colorways c JOIN shoes s ON s.id = c.shoe_id
           WHERE c.id = :id'
@@ -328,7 +329,9 @@ render_header('Edit colorway: ' . $cw['name'], '', true, $css);
 
     <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
         <div>
-            <p class="small text-muted mb-1"><?= e($model) ?> &middot; <?= e($cw['category']) ?> &middot; &#8369;<?= number_format((float) $cw['price'], 2) ?></p>
+            <p class="small text-muted mb-1"><?= e($model) ?> &middot;
+                <?php if (($mainLabel = main_category_label($cw['main_category'])) !== ''): ?><?= e($mainLabel) ?> &middot;<?php endif; ?>
+                <?= e($cw['category']) ?> &middot; &#8369;<?= number_format((float) $cw['price'], 2) ?></p>
             <h1 class="page-title mb-1" id="cw-title"><?= e($cw['name']) ?></h1>
             <p class="page-sub mb-0">Edit this colorway<?= $canViewInv ? ' &middot; ' . $pairs . ' pair' . ($pairs === 1 ? '' : 's') . ' in ' . count($sizes) . ' size' . (count($sizes) === 1 ? '' : 's') : '' ?>.
                 To add or remove pairs, use Stock in / Stock out on the inventory page.</p>

@@ -8,9 +8,12 @@ require_once __DIR__ . '/inventory-lib.php';
  * and stock. With the right permissions: Stock in / Stock out / Set count per colorway (every
  * change goes into the stock history), edit a model's details, delete a colorway or a whole
  * model (the history is kept). Every action is checked on the server, not only hidden on the page.
+ * Tabs above the filters show All Shoes, Women's Shoes or Men's Shoes (admin.php?main=women etc.),
+ * plus "Unassigned" while some older models have no main category yet (admin.php?main=none).
  */
 
 $user       = require_permission('inventory.view');
+require_main_categories($pdo);
 $canEdit    = can('shoes.edit');
 $canDelShoe = can('shoes.delete');
 $canDelCw   = can('colorways.delete');
@@ -179,7 +182,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 /* ---------- Load every model with its colorways and sizes ---------- */
 $rows = $pdo->query(
-    'SELECT s.id AS shoe_id, s.name, s.brand, s.category, s.price, s.image_url AS model_image,
+    'SELECT s.id AS shoe_id, s.name, s.brand, s.main_category, s.category, s.price, s.image_url AS model_image,
             c.id AS colorway_id, c.name AS colorway, c.description, c.image_path, c.image_url,
             z.id AS size_id, z.size_number, z.quantity
        FROM shoes s
@@ -192,7 +195,8 @@ $shoes = [];
 foreach ($rows as $r) {
     $id = (int) $r['shoe_id'];
     if (!isset($shoes[$id])) {
-        $shoes[$id] = ['name' => $r['name'], 'brand' => $r['brand'], 'category' => $r['category'], 'price' => (float) $r['price'],
+        $shoes[$id] = ['name' => $r['name'], 'brand' => $r['brand'], 'main' => (string) $r['main_category'],   // '' = not set yet
+                       'category' => $r['category'], 'price' => (float) $r['price'],
                        'legacy_image' => $r['model_image'], 'colorways' => [], 'total' => 0, 'out' => 0, 'low' => 0];
     }
     if ($r['colorway_id'] === null) {
@@ -220,7 +224,10 @@ foreach ($rows as $r) {
 
 $stats = ['models' => count($shoes), 'colorways' => 0, 'pairs' => 0, 'out' => 0, 'low' => 0];
 $categories = [];
+// Main category tabs: how many models each one has ('none' = no main category yet).
+$mainCounts = ['' => count($shoes), 'none' => 0] + array_fill_keys(array_keys(MAIN_CATEGORIES), 0);
 foreach ($shoes as $id => $shoe) {
+    $mainCounts[$shoe['main'] === '' ? 'none' : $shoe['main']]++;
     // The model's picture: its first colorway photo; an old model-level image link only if no colorway has one.
     $image = null;
     foreach ($shoe['colorways'] as $c) {
@@ -241,6 +248,12 @@ foreach ($shoes as $id => $shoe) {
 }
 $categories = array_keys($categories);
 sort($categories, SORT_NATURAL | SORT_FLAG_CASE);
+
+$mainTabs = ['' => 'All Shoes'] + MAIN_CATEGORIES;
+if ($mainCounts['none'] > 0) {
+    $mainTabs['none'] = 'Unassigned';                  // only while some models have no main category
+}
+$mainFilter = is_string($_GET['main'] ?? null) && isset($mainTabs[$_GET['main']]) ? $_GET['main'] : '';
 
 /** A photo box: the picture, or a neutral placeholder when there is none or it fails to load. */
 function img_box(?string $src, string $alt, string $class): string
@@ -304,6 +317,9 @@ $css = <<<'CSS'
         padding-left: 2.4rem; background-repeat: no-repeat; background-position: .85rem center; background-size: 1rem;
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23707072'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.656a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E");
     }
+
+    /* A model with no main category yet (Women's Shoes / Men's Shoes) */
+    .main-unset { color: #8a6500; font-weight: 600; }
 
     /* Editing */
     .qty-input.is-changed { border-color: #f0b400; background: #fffbea; box-shadow: 0 0 0 .15rem rgba(240,180,0,.25); }
@@ -378,6 +394,24 @@ render_header('Inventory', 'inventory', true, $css);
         </div></div>
     <?php else: ?>
 
+    <?php if ($canEdit && $mainCounts['none'] > 0): $n = $mainCounts['none']; ?>
+        <div class="alert alert-warning d-flex flex-column flex-md-row align-items-md-center gap-2 gap-md-3" role="status">
+            <span class="flex-grow-1"><?= $n ?> shoe model<?= $n === 1 ? ' has' : 's have' ?> no main category yet, so <?= $n === 1 ? 'it is' : 'they are' ?> only listed under All Shoes.
+                Open <?= $n === 1 ? 'it' : 'each one' ?> and use <strong>Edit model details</strong> to choose Women's Shoes or Men's Shoes.</span>
+            <a class="btn btn-outline-secondary btn-sm flex-shrink-0 align-self-start align-self-md-center" href="admin.php?main=none" data-main-link="none">Show <?= $n === 1 ? 'it' : 'them' ?></a>
+        </div>
+    <?php endif; ?>
+
+    <!-- Main categories -->
+    <nav class="cat-nav mb-3" id="main-nav" aria-label="Main categories">
+        <?php foreach ($mainTabs as $code => $tab): ?>
+            <a class="cat-pill<?= $code === 'none' ? ' is-unset' : '' ?>" href="admin.php<?= $code !== '' ? '?main=' . e($code) : '' ?>"
+               data-main="<?= e($code) ?>"<?= $code === $mainFilter ? ' aria-current="page"' : '' ?>>
+                <?= e($tab) ?><span class="cat-count"><span data-count><?= $mainCounts[$code] ?></span><span class="visually-hidden"> models</span></span>
+            </a>
+        <?php endforeach; ?>
+    </nav>
+
     <!-- Filters -->
     <div class="card shadow-sm mb-3"><div class="card-body">
         <div class="row g-2 align-items-end">
@@ -443,6 +477,7 @@ render_header('Inventory', 'inventory', true, $css);
                     $model  = $shoe['brand'] . ' ' . $shoe['name']; ?>
                 <tbody class="shoe-group"
                        data-search="<?= e(mb_strtolower($search)) ?>"
+                       data-main="<?= e($shoe['main']) ?>"
                        data-category="<?= e($shoe['category']) ?>"
                        data-name="<?= e(mb_strtolower($shoe['name'] . ' ' . $shoe['brand'])) ?>"
                        data-price="<?= $shoe['price'] ?>"
@@ -455,7 +490,10 @@ render_header('Inventory', 'inventory', true, $css);
                                 <?= img_box($shoe['image'], '', 'thumb-lg') ?>
                                 <div class="min-w-0">
                                     <div class="fw-semibold"><?= e($shoe['name']) ?></div>
-                                    <div class="small text-muted"><?= e($shoe['category']) ?></div>
+                                    <div class="small text-muted">
+                                        <?= $shoe['main'] !== '' ? e(main_category_label($shoe['main'])) : '<span class="main-unset">No main category</span>' ?>
+                                        &middot; <?= e($shoe['category']) ?>
+                                    </div>
                                     <div class="small text-muted d-md-none"><?= e($shoe['brand']) ?> &middot; &#8369;<?= number_format($shoe['price'], 2) ?></div>
                                 </div>
                             </div>
@@ -523,19 +561,28 @@ render_header('Inventory', 'inventory', true, $css);
                                     <input type="hidden" name="shoe_id" value="<?= $shoeId ?>">
                                     <p class="small fw-semibold mb-2">Model details (shared by all colorways)</p>
                                     <div class="row g-2">
-                                        <div class="col-12 col-md-4">
+                                        <div class="col-12 col-md-6 col-xl-3">
                                             <label class="form-label small mb-0" for="n<?= $shoeId ?>">Model name</label>
                                             <input type="text" class="form-control form-control-sm" id="n<?= $shoeId ?>" name="name" maxlength="150" required value="<?= e($shoe['name']) ?>">
                                         </div>
-                                        <div class="col-6 col-md-3">
+                                        <div class="col-6 col-md-6 col-xl-2">
                                             <label class="form-label small mb-0" for="b<?= $shoeId ?>">Brand</label>
                                             <input type="text" class="form-control form-control-sm" id="b<?= $shoeId ?>" name="brand" maxlength="100" required value="<?= e($shoe['brand']) ?>">
                                         </div>
-                                        <div class="col-6 col-md-3">
+                                        <div class="col-6 col-md-4 col-xl-2">
+                                            <label class="form-label small mb-0" for="m<?= $shoeId ?>">Main category</label>
+                                            <select class="form-select form-select-sm" id="m<?= $shoeId ?>" name="main_category" required>
+                                                <?php if ($shoe['main'] === ''): ?><option value="" selected disabled>Choose...</option><?php endif; ?>
+                                                <?php foreach (MAIN_CATEGORIES as $code => $mainName): ?>
+                                                    <option value="<?= e($code) ?>"<?= $shoe['main'] === $code ? ' selected' : '' ?>><?= e($mainName) ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </div>
+                                        <div class="col-6 col-md-4 col-xl-3">
                                             <label class="form-label small mb-0" for="c<?= $shoeId ?>">Category</label>
                                             <input type="text" class="form-control form-control-sm" id="c<?= $shoeId ?>" name="category" maxlength="100" list="cat-list" required value="<?= e($shoe['category']) ?>">
                                         </div>
-                                        <div class="col-6 col-md-2">
+                                        <div class="col-6 col-md-4 col-xl-2">
                                             <label class="form-label small mb-0" for="p<?= $shoeId ?>">Price (&#8369;)</label>
                                             <input type="number" class="form-control form-control-sm" id="p<?= $shoeId ?>" name="price" min="0" max="9999999.99" step="0.01" inputmode="decimal" required value="<?= $priceStr ?>">
                                         </div>
@@ -738,6 +785,10 @@ render_header('Inventory', 'inventory', true, $css);
     const cat = document.getElementById('filter-cat');
     const status = document.getElementById('filter-status');
     const sortSel = document.getElementById('sort');
+    const mainNav = document.getElementById('main-nav');
+    const pills = mainNav ? Array.from(mainNav.querySelectorAll('.cat-pill')) : [];
+    const pickedPill = pills.find((p) => p.getAttribute('aria-current') === 'page');
+    let main = pickedPill ? pickedPill.dataset.main : '';     // '' = All Shoes, 'women', 'men', 'none' = Unassigned
     let page = 1;
 
     /* After saving, the page reloads: put the user back on the same filters, page and opened models (one time only). */
@@ -745,9 +796,26 @@ render_header('Inventory', 'inventory', true, $css);
         try {
             sessionStorage.setItem(VIEW_KEY, JSON.stringify({
                 q: q ? q.value : '', cat: cat ? cat.value : '', status: status ? status.value : '', sort: sortSel ? sortSel.value : 'name',
-                page: page, open: Array.from(document.querySelectorAll('tr.model-detail.show')).map((el) => el.id), scroll: window.scrollY
+                main: main, page: page, open: Array.from(document.querySelectorAll('tr.model-detail.show')).map((el) => el.id), scroll: window.scrollY
             }));
         } catch (err) { /* storage unavailable: ignore */ }
+    }
+
+    /* Main category tab: mark it and show it in the address (so a reload keeps it). Unknown -> All Shoes. */
+    function setMain(code) {
+        const pill = pills.find((p) => p.dataset.main === code);
+        main = pill ? code : '';
+        pills.forEach((p) => {
+            if (p.dataset.main === main) { p.setAttribute('aria-current', 'page'); } else { p.removeAttribute('aria-current'); }
+        });
+        try {
+            const url = new URL(window.location.href);
+            if (main) { url.searchParams.set('main', main); } else { url.searchParams.delete('main'); }
+            history.replaceState(null, '', url.pathname + url.search + url.hash);
+        } catch (err) { /* old browser: the links still work */ }
+    }
+    function inMain(g) {
+        return main === '' || (main === 'none' ? g.dataset.main === '' : g.dataset.main === main);
     }
     let saved = null;
     try {
@@ -781,6 +849,7 @@ render_header('Inventory', 'inventory', true, $css);
             }
             sortSel.value = saved.sort || 'name';
             if (sortSel.selectedIndex < 0 || !sorters[sortSel.value]) { sortSel.value = 'name'; }
+            setMain(typeof saved.main === 'string' ? saved.main : '');
             page = parseInt(saved.page, 10) || 1;
             (saved.open || []).forEach((id) => {
                 const row = document.getElementById(id);
@@ -844,6 +913,9 @@ render_header('Inventory', 'inventory', true, $css);
             const want = status ? status.value : '';
             const sorted = groups.slice().sort(sorters[sortSel.value] || sorters.name);
             sorted.forEach((g) => table.appendChild(g));
+            // The other filters look at every model; each tab's count shows how many of those matches it holds.
+            const counts = { '': 0 };
+            pills.forEach((p) => { counts[p.dataset.main] = 0; });
             const matched = sorted.filter((g) => {
                 const d = g.dataset;
                 let ok = !term || d.search.indexOf(term) !== -1;
@@ -851,8 +923,14 @@ render_header('Inventory', 'inventory', true, $css);
                 if (ok && want === 'out') { ok = +d.out > 0; }
                 if (ok && want === 'low') { ok = +d.low > 0; }
                 if (ok && want === 'ok') { ok = +d.out === 0 && +d.low === 0; }
-                return ok;
+                if (ok) {
+                    const key = d.main === '' ? 'none' : d.main;
+                    counts['']++;
+                    if (Object.prototype.hasOwnProperty.call(counts, key)) { counts[key]++; }
+                }
+                return ok && inMain(g);
             });
+            pills.forEach((p) => { p.querySelector('[data-count]').textContent = counts[p.dataset.main]; });
             const pages = Math.max(1, Math.ceil(matched.length / PER_PAGE));
             page = Math.min(Math.max(page, 1), pages);
             const start = (page - 1) * PER_PAGE;
@@ -913,8 +991,22 @@ render_header('Inventory', 'inventory', true, $css);
             cat.value = '';
             if (status) { status.value = ''; }
             sortSel.value = 'name';
+            setMain('');
             applyFromFirstPage();
             q.focus();
+        });
+        /* Main category tabs, and the "Show them" link of the Unassigned notice (ctrl/middle click still opens a new tab) */
+        document.addEventListener('click', (ev) => {
+            const a = ev.target.closest('#main-nav .cat-pill, [data-main-link]');
+            if (!a || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.altKey || ev.button !== 0) {
+                return;
+            }
+            ev.preventDefault();
+            setMain(a.hasAttribute('data-main-link') ? a.dataset.mainLink : a.dataset.main);
+            applyFromFirstPage();
+            if (a.hasAttribute('data-main-link')) {
+                mainNav.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         });
         document.querySelectorAll('[data-quick-filter]').forEach((btn) => {
             btn.addEventListener('click', () => {
