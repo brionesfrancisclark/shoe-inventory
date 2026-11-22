@@ -292,24 +292,24 @@ $token    = csrf_token();
 
 $css = <<<'CSS'
 <style>
-    .photo-box { width: 160px; height: 160px; border-radius: 16px; background: #f5f5f5; border: 1px solid #ececec; flex-shrink: 0;
+    .photo-box { width: 160px; height: 160px; border-radius: 16px; background: var(--photo-bg); border: 1px solid var(--line-2); flex-shrink: 0;
                  display: inline-flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
     .photo-box img { width: 100%; height: 100%; object-fit: contain; }
-    .photo-box > .bi { display: none; font-size: 2rem; color: #b5b5b7; }
+    .photo-box > .bi { display: none; font-size: 2rem; color: var(--photo-icon); }
     .photo-box.is-empty > .bi, .photo-box.is-broken > .bi { display: block; }
     .photo-box.is-broken img { display: none; }
-    .photo-choice { border: 1px solid #ececec; border-radius: 12px; padding: .65rem .85rem; }
+    .photo-choice { border: 1px solid var(--line-2); border-radius: 12px; padding: .65rem .85rem; }
     .photo-choice + .photo-choice { margin-top: .5rem; }
-    .photo-choice:has(input[name="photo"]:checked) { border-color: #111; background: #fff; }
+    .photo-choice:has(input[name="photo"]:checked) { border-color: var(--ink); background: var(--surface); }
     .photo-choice .choice-body { margin-top: .5rem; }
     .photo-choice:not(:has(input[name="photo"]:checked)) .choice-body { display: none; }
     .current-size { text-align: center; }
-    .current-size.is-removing { background: #fdecea; border-color: #f3b7ac; text-decoration: line-through; }
+    .current-size.is-removing { background: var(--bad-bg); border-color: var(--bad-border); text-decoration: line-through; }
     .current-size .sz { font-weight: 800; }
     .size-tile .form-check { min-height: 0; }
-    .size-tile.is-off { background: #fff; border-style: dashed; }
+    .size-tile.is-off { background: var(--surface); border-style: dashed; }
     .size-tile.is-off .qty-input { opacity: .4; }
-    .danger-zone { border-color: #f3b7ac; }
+    .danger-zone { border-color: var(--bad-border); }
 </style>
 CSS;
 

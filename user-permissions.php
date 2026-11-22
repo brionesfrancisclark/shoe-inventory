@@ -64,11 +64,11 @@ $css = <<<'CSS'
 <style>
     .perm-item { padding: .6rem .75rem; border-radius: 12px; border: 1px solid transparent; }
     .perm-item + .perm-item { margin-top: .25rem; }
-    .perm-item:hover { background: #fafafa; border-color: #ececec; }
-    .perm-item.is-changed { background: #fffbea; border-color: #f2d27a; }
+    .perm-item:hover { background: var(--hover); border-color: var(--line-2); }
+    .perm-item.is-changed { background: var(--warn-bg-3); border-color: var(--warn-border); }
     .perm-item .form-check-input { margin-top: .3rem; width: 1.15em; height: 1.15em; }
-    .perm-item .form-check-input:not(:checked) { border-color: #8f8f91; }   /* unticked boxes clearly visible */
-    .perm-chip { display: inline-block; padding: .2rem .6rem; margin: 0 .25rem .35rem 0; border-radius: 50rem; background: #f0f0f0; font-size: .78rem; font-weight: 600; }
+    .perm-item .form-check-input:not(:checked) { border-color: var(--field-2); }   /* unticked boxes clearly visible */
+    .perm-chip { display: inline-block; padding: .2rem .6rem; margin: 0 .25rem .35rem 0; border-radius: 50rem; background: var(--chip); font-size: .78rem; font-weight: 600; }
 </style>
 CSS;
 

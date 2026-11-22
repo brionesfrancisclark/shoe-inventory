@@ -468,9 +468,9 @@ $css = <<<'CSS'
     /* Add Shoe page only (the shared theme lives in layout.php) */
     .size-tile .form-check { min-height: 0; }
     .size-tile .form-check-label { font-size: .8rem; font-weight: 600; color: var(--ink-2); }
-    .size-tile.is-off { background: #fff; border-style: dashed; }
+    .size-tile.is-off { background: var(--surface); border-style: dashed; }
     .size-tile.is-off .qty-input { opacity: .4; }
-    .cw-thumb { width: 88px; height: 88px; object-fit: contain; border-radius: 14px; background: #f5f5f5; border: 1px solid #ececec; flex-shrink: 0; }
+    .cw-thumb { width: 88px; height: 88px; object-fit: contain; border-radius: 14px; background: var(--photo-bg); border: 1px solid var(--line-2); flex-shrink: 0; }
     #model-choice .form-check-label { font-weight: 500; }
 </style>
 CSS;

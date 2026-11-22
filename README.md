@@ -55,6 +55,7 @@ Built with **PHP 8.1+ (PDO)**, **MariaDB** (included in XAMPP) and **Bootstrap 5
   - create staff accounts and give each person a checklist of what they may do;
   - reset passwords, and turn accounts on or off.
 - **Exactly one Admin**: a second Admin can never be created. The Admin can't be demoted, turned off or deleted. The database itself enforces this, not only the pages.
+- **Light and dark mode**: the moon / sun button next to **Sign out** (top-right corner on the sign-in page) switches every page between them. Each browser remembers its own choice. Until someone picks one, the computer's own light / dark setting is used.
 
 ### Roles and permissions
 
@@ -98,7 +99,7 @@ shoe-inventory/
 │   └── favicon.png         The small icon in the browser tab
 ├── db.php                  Database settings (the only file you normally edit) + small helpers
 ├── auth.php                Sign-in checks, permissions, security headers
-├── layout.php              Shared page header, menu, messages
+├── layout.php              Shared page header, menu, messages, light / dark colours
 ├── index.php               Start page (sends you to sign-in or to your first page)
 ├── login.php / logout.php  Sign in (+ the one-time "create the Admin" form) / sign out
 ├── admin.php               Inventory
@@ -413,6 +414,8 @@ Each size shows what it will become before you save. Stock can never go below 0.
 
 Both ask for confirmation first. The history keeps a record.
 
+**Switch to dark mode**: click the moon button next to **Sign out** (on a phone, open the menu first). Click the sun to go back to light mode.
+
 ---
 
 ## Configuration
@@ -422,6 +425,7 @@ Both ask for confirmation first. The history keeps a record.
 | Database settings                      | `db.php`                                       | `root`, no password, database `shoe_inventory` |
 | Store name                             | `layout.php` (menu bar and tab title) and `login.php` (sign-in page) | Dazzling Footwear |
 | Logo / tab icon                        | Replace `assets/logo.png` / `assets/favicon.png` (keep the file names) | Two-shoe logo |
+| Colours (light and dark mode)          | The colour list at the top of the `<style>` in `layout.php`: `:root` = light mode, `[data-bs-theme="dark"]` = dark mode | Black & white |
 | Time zone                              | `APP_TIMEZONE` in `db.php`                     | `Asia/Manila` |
 | Low-stock threshold                    | `LOW_STOCK_LIMIT` in `inventory-lib.php`       | 3 pairs (1–3 = low, 0 = out) |
 | Standard sizes on the forms            | `STANDARD_SIZES` in `inventory-lib.php`        | US 7.0–11.0 in half sizes |
