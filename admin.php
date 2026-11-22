@@ -271,21 +271,21 @@ $css = <<<'CSS'
 <style>
     /* Inventory page only (the shared theme lives in layout.php) */
     .img-box { position: relative; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
-               overflow: hidden; background: #f5f5f5; border-radius: 14px; }
+               overflow: hidden; background: var(--photo-bg); border-radius: 14px; }
     .img-box img { width: 100%; height: 100%; object-fit: contain; }
-    .img-box > .bi { display: none; font-size: 1.35rem; color: #b5b5b7; }
+    .img-box > .bi { display: none; font-size: 1.35rem; color: var(--photo-icon); }
     .img-box.is-empty > .bi, .img-box.is-broken > .bi { display: block; }
     .img-box.is-broken img { display: none; }
     .thumb-lg { width: 72px; height: 72px; }
-    .thumb-md { width: 96px; height: 96px; border: 1px solid #ececec; }
+    .thumb-md { width: 96px; height: 96px; border: 1px solid var(--line-2); }
     .thumb-sm { width: 26px; height: 26px; border-radius: 50%; }
     .thumb-sm > .bi { font-size: .75rem; }
     .cw-chip { display: inline-flex; align-items: center; gap: .35rem; max-width: 12rem; padding: .15rem .6rem .15rem .15rem;
-               border: 1px solid #e5e5e5; border-radius: 50rem; background: #fff; font-size: .78rem; font-weight: 600; }
+               border: 1px solid var(--line); border-radius: 50rem; background: var(--surface); font-size: .78rem; font-weight: 600; }
     .cw-chip .chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .cw-panel { background: #fff; border: 1px solid #ececec; border-radius: 16px; padding: 1rem 1.25rem; }
+    .cw-panel { background: var(--surface); border: 1px solid var(--line-2); border-radius: 16px; padding: 1rem 1.25rem; }
     .cw-panel + .cw-panel { margin-top: .75rem; }
-    .cw-panel.is-target { box-shadow: 0 0 0 2px #111; }
+    .cw-panel.is-target { box-shadow: 0 0 0 2px var(--ink); }
     .model-actions .btn { white-space: nowrap; }
     @media (max-width: 575.98px) {                    /* phones: keep each model row within the screen */
         .thumb-lg { width: 52px; height: 52px; border-radius: 12px; }
@@ -296,21 +296,21 @@ $css = <<<'CSS'
 
     /* Size / stock tiles */
     .size-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: .4rem; }
-    .size-cell { border: 1px solid #e5e5e5; border-radius: 10px; text-align: center; padding: .35rem .2rem .3rem; background: #fff; }
-    .size-cell .sz { font-size: .68rem; font-weight: 600; letter-spacing: .02em; color: #707072; display: block; }
+    .size-cell { border: 1px solid var(--line); border-radius: 10px; text-align: center; padding: .35rem .2rem .3rem; background: var(--surface); }
+    .size-cell .sz { font-size: .68rem; font-weight: 600; letter-spacing: .02em; color: var(--ink-2); display: block; }
     .size-cell .qt { font-weight: 800; font-size: 1.1rem; line-height: 1.25; display: block; }
     .size-cell .flag { display: block; font-size: .58rem; font-weight: 800; letter-spacing: .08em; min-height: .9rem; }
-    .size-cell.out { background: #fdecea; border-color: #f3b7ac; }
-    .size-cell.out .sz, .size-cell.out .qt, .size-cell.out .flag { color: #c2371b; }
-    .size-cell.low { background: #fff6dc; border-color: #f2d27a; }
-    .size-cell.low .flag { color: #8a6500; }
+    .size-cell.out { background: var(--bad-bg); border-color: var(--bad-border); }
+    .size-cell.out .sz, .size-cell.out .qt, .size-cell.out .flag { color: var(--bad-strong); }
+    .size-cell.low { background: var(--warn-bg); border-color: var(--warn-border); }
+    .size-cell.low .flag { color: var(--warn-text); }
 
     /* Summary cards */
     .stat-card { text-align: left; width: 100%; transition: transform .15s ease, box-shadow .15s ease; }
-    .stat-card .small { font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #707072 !important; }
+    .stat-card .small { font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2) !important; }
     .stat-card .num { font-size: 2.25rem; font-weight: 800; line-height: 1.1; letter-spacing: -.03em; }
     button.stat-card { cursor: pointer; }
-    button.stat-card:hover { transform: translateY(-2px); box-shadow: 0 0 0 2px #111, 0 .5rem 1.25rem rgba(0,0,0,.08) !important; }
+    button.stat-card:hover { transform: translateY(-2px); box-shadow: 0 0 0 2px var(--ink), 0 .5rem 1.25rem rgba(0,0,0,.08) !important; }
 
     /* Search box icon */
     #filter-q {
@@ -319,12 +319,13 @@ $css = <<<'CSS'
     }
 
     /* A model with no main category yet (Women's Shoes / Men's Shoes) */
-    .main-unset { color: #8a6500; font-weight: 600; }
+    .main-unset { color: var(--warn-text); font-weight: 600; }
 
     /* Editing */
-    .qty-input.is-changed { border-color: #f0b400; background: #fffbea; box-shadow: 0 0 0 .15rem rgba(240,180,0,.25); }
-    .stock-hint { font-size: .7rem; font-weight: 600; color: #8a6500; min-height: 1rem; }
-    tbody.shoe-group > tr:first-child > td { border-top: 1px solid #f0f0f0; }
+    .qty-input.is-changed { border-color: var(--warn-edit); background: var(--warn-bg-3); box-shadow: 0 0 0 .15rem rgba(var(--warn-edit-rgb), .25); }
+    .stock-hint { font-size: .7rem; font-weight: 600; color: var(--warn-text); min-height: 1rem; }
+    tbody.shoe-group > tr:first-child > td { border-top: 1px solid var(--line-3); }
+    .num-low { color: var(--warn-num); }
 </style>
 CSS;
 
@@ -379,7 +380,7 @@ render_header('Inventory', 'inventory', true, $css);
             <button type="button" class="card shadow-sm stat-card h-100 p-0 border-0 bg-white" data-quick-filter="low" aria-label="Show shoes with low-stock sizes">
                 <span class="card-body d-block">
                     <span class="small text-muted d-block">Low-stock sizes (1&ndash;<?= LOW_STOCK_LIMIT ?>)</span>
-                    <span class="num" style="color:#b58100" data-stat="low"><?= $stats['low'] ?></span>
+                    <span class="num num-low" data-stat="low"><?= $stats['low'] ?></span>
                 </span>
             </button>
         </div>
@@ -514,7 +515,7 @@ render_header('Inventory', 'inventory', true, $css);
                             <?php if (($showOut && $shoe['out']) || ($showLow && $shoe['low'])): ?>
                                 <div class="mt-1">
                                     <?php if ($showOut && $shoe['out']): ?><span class="badge text-bg-danger"><?= $shoe['out'] ?> size<?= $shoe['out'] === 1 ? '' : 's' ?> out</span><?php endif; ?>
-                                    <?php if ($showLow && $shoe['low']): ?><span class="badge text-bg-secondary" style="background:#fff6dc !important;color:#8a6500 !important"><?= $shoe['low'] ?> low</span><?php endif; ?>
+                                    <?php if ($showLow && $shoe['low']): ?><span class="badge badge-low"><?= $shoe['low'] ?> low</span><?php endif; ?>
                                 </div>
                             <?php endif; ?>
                         </td>
@@ -612,7 +613,7 @@ render_header('Inventory', 'inventory', true, $css);
                                                 </div>
                                                 <div class="d-flex flex-wrap align-items-center gap-1">
                                                     <?php if ($showOut && $c['out']): ?><span class="badge text-bg-danger"><?= $c['out'] ?> out</span><?php endif; ?>
-                                                    <?php if ($showLow && $c['low']): ?><span class="badge" style="background:#fff6dc;color:#8a6500"><?= $c['low'] ?> low</span><?php endif; ?>
+                                                    <?php if ($showLow && $c['low']): ?><span class="badge badge-low"><?= $c['low'] ?> low</span><?php endif; ?>
                                                     <span class="badge rounded-pill text-bg-light border text-dark" title="Pairs of this colorway"><?= $c['total'] ?> pair<?= $c['total'] === 1 ? '' : 's' ?></span>
                                                 </div>
                                             </div>

@@ -38,33 +38,33 @@ function photo_box(?string $src, string $alt, string $class, bool $lazy = true):
 $shoeId = (int) filter_var($_GET['id'] ?? '', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'default' => 0]]);
 $css = <<<'CSS'
 <style>
-    .pbox { position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f5f5f5; flex-shrink: 0; }
+    .pbox { position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; background: var(--photo-bg); flex-shrink: 0; }
     .pbox img { width: 100%; height: 100%; object-fit: contain; }
-    .pbox > .bi { display: none; font-size: 1.6rem; color: #b5b5b7; }
+    .pbox > .bi { display: none; font-size: 1.6rem; color: var(--photo-icon); }
     .pbox.is-empty > .bi, .pbox.is-broken > .bi { display: block; }
     .pbox.is-broken img { display: none; }
     .card-photo { width: 100%; aspect-ratio: 4 / 3; border-radius: 16px 16px 0 0; }
-    .hero-photo { width: 100%; aspect-ratio: 1 / 1; max-height: 520px; border-radius: 20px; border: 1px solid #ececec; background: #fff; }
+    .hero-photo { width: 100%; aspect-ratio: 1 / 1; max-height: 520px; border-radius: 20px; border: 1px solid var(--line-2); background: var(--photo-bg-2); }
     .hero-photo > .bi { font-size: 3rem; }
-    .swatch { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #e5e5e5; }
+    .swatch { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line); }
     .swatch > .bi { font-size: .7rem; }
     .shoe-card { transition: transform .15s ease, box-shadow .15s ease; color: inherit; text-decoration: none; }
-    .shoe-card:hover, .shoe-card:focus-visible { transform: translateY(-2px); box-shadow: 0 0 0 2px #111, 0 .5rem 1.25rem rgba(0,0,0,.08) !important; }
+    .shoe-card:hover, .shoe-card:focus-visible { transform: translateY(-2px); box-shadow: 0 0 0 2px var(--ink), 0 .5rem 1.25rem rgba(0,0,0,.08) !important; }
     .cw-option { display: flex; flex-direction: column; align-items: center; gap: .3rem; width: 96px; padding: .4rem; border: 2px solid transparent;
                  border-radius: 14px; color: inherit; text-decoration: none; font-size: .75rem; font-weight: 600; text-align: center; }
     .cw-option .pbox { width: 80px; height: 80px; border-radius: 12px; }
-    .cw-option:hover { border-color: #cacacb; }
-    .cw-option[aria-current="true"] { border-color: #111; background: #fff; }
+    .cw-option:hover { border-color: var(--field); }
+    .cw-option[aria-current="true"] { border-color: var(--ink); background: var(--surface); }
     .cw-option .cw-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .size-btn { min-width: 4.6rem; border: 1px solid #d5d5d5; border-radius: 10px; background: #fff; padding: .45rem .5rem; line-height: 1.15; }
-    .size-btn .qty { display: block; font-size: .7rem; font-weight: 600; color: #707072; }
-    .size-btn:hover { border-color: #111; }
-    .size-btn[aria-pressed="true"] { background: #111; border-color: #111; color: #fff; }
-    .size-btn[aria-pressed="true"] .qty { color: #ddd; }
-    .size-btn.is-out { background: #fdecea; border-color: #f3b7ac; color: #c2371b; }
-    .size-btn.is-out .qty { color: #c2371b; }
-    .size-btn.is-low .qty { color: #8a6500; }
-    .size-btn.is-out[aria-pressed="true"] { background: #c2371b; color: #fff; }
+    .size-btn { min-width: 4.6rem; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); padding: .45rem .5rem; line-height: 1.15; }
+    .size-btn .qty { display: block; font-size: .7rem; font-weight: 600; color: var(--ink-2); }
+    .size-btn:hover { border-color: var(--ink); }
+    .size-btn[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
+    .size-btn[aria-pressed="true"] .qty { color: var(--on-ink-2); }
+    .size-btn.is-out { background: var(--bad-bg); border-color: var(--bad-border); color: var(--bad-strong); }
+    .size-btn.is-out .qty { color: var(--bad-strong); }
+    .size-btn.is-low .qty { color: var(--warn-text); }
+    .size-btn.is-out[aria-pressed="true"] { background: var(--bad-solid); color: #fff; }
     #shoe-search {
         padding-left: 2.4rem; background-repeat: no-repeat; background-position: .85rem center; background-size: 1rem;
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23707072'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.656a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E");

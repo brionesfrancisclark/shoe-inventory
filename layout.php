@@ -12,10 +12,50 @@ function render_header(string $title, string $active = '', bool $nav = true, str
     $u = current_user();
     ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="light">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script>
+        /* Light / dark mode.
+           The choice is saved in this browser (localStorage "df-theme"). With no saved choice the
+           computer's own setting is used. This runs before the page is drawn, so there is no white
+           flash in dark mode. Any button with data-theme-toggle switches the mode. */
+        (function () {
+            var KEY = 'df-theme', root = document.documentElement;
+            var media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+            function saved() {
+                try { return localStorage.getItem(KEY); } catch (e) { return null; }
+            }
+            function pick() {
+                var t = saved();
+                return t === 'dark' || t === 'light' ? t : (media && media.matches ? 'dark' : 'light');
+            }
+            function apply(t) {
+                root.setAttribute('data-bs-theme', t);
+                document.querySelectorAll('[data-theme-toggle]').forEach(function (b) {
+                    b.setAttribute('aria-pressed', t === 'dark' ? 'true' : 'false');
+                    b.title = t === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+                });
+            }
+
+            apply(pick());
+            document.addEventListener('DOMContentLoaded', function () { apply(pick()); });
+            document.addEventListener('click', function (e) {
+                if (!e.target.closest || !e.target.closest('[data-theme-toggle]')) {
+                    return;
+                }
+                var t = root.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
+                try { localStorage.setItem(KEY, t); } catch (err) { /* private window: still switches for this page */ }
+                apply(t);
+            });
+            if (media && media.addEventListener) {
+                media.addEventListener('change', function () { if (!saved()) { apply(pick()); } });
+            }
+            window.addEventListener('storage', function (e) { if (e.key === KEY) { apply(pick()); } });   // other open tabs follow
+        })();
+    </script>
     <title><?= e($title) ?> | Dazzling Footwear</title>
     <link rel="icon" type="image/png" href="assets/favicon.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -25,36 +65,141 @@ function render_header(string $title, string $active = '', bool $nav = true, str
            Dazzling Footwear - shared theme
            Minimal black & white, bold type, pill buttons, soft cards.
            Everything below only re-skins Bootstrap 5; no behaviour here.
-           ============================================================ */
-        :root {
-            --ink: #111111;
-            --ink-2: #707072;
-            --line: #e5e5e5;
-            --soft: #f5f5f5;
 
+           Light / dark mode: <html data-bs-theme="light"> or "dark" (set by the script above).
+           Every colour is one of the tokens below - light values in :root, dark values in
+           [data-bs-theme="dark"]. Page styles use var(--ink), var(--surface) ... instead of
+           fixed colours, so they switch with the mode automatically.
+           ============================================================ */
+
+        /* ---------- Colour tokens: light (default) ---------- */
+        :root {
+            /* Text, and the black "ink" of primary buttons and selected items */
+            --ink: #111111;          --ink-rgb: 17, 17, 17;
+            --ink-2: #707072;        --ink-2-rgb: 112, 112, 114;    /* secondary text */
+            --ink-3: #b5b5b7;                                       /* faint / disabled text */
+            --ink-active: #39393b;                                  /* primary button while pressed */
+            --ink-disabled: #cacacb;
+            --placeholder: #a0a0a2;
+            --on-ink: #ffffff;       --on-ink-rgb: 255, 255, 255;   /* text on an --ink background */
+            --on-ink-2: #dddddd;
+            --on-ink-disabled: #ffffff;
+
+            /* Backgrounds */
+            --soft: #f5f5f5;         --soft-rgb: 245, 245, 245;     /* page and cards */
+            --surface: #ffffff;                                     /* navbar, card headers, chips, panels */
+            --surface-2: #f7f7f7;                                   /* size tiles */
+            --hover: #fafafa;
+            --pressed: #ebebeb;
+            --pressed-2: #e0e0e0;
+            --chip: #f0f0f0;
+            --modal-bg: #f5f5f5;
+            --photo-bg: #f5f5f5;     /* behind shoe photos; stays light in dark mode because the photos have white backgrounds */
+            --photo-bg-2: #ffffff;
+            --photo-icon: #b5b5b7;   /* "no photo" icon */
+
+            /* Lines */
+            --line: #e5e5e5;
+            --line-2: #ececec;       /* card borders */
+            --line-3: #f0f0f0;       /* dividers inside cards */
+            --line-strong: #d5d5d5;
+            --field: #cacacb;        /* inputs and outline buttons */
+            --field-2: #8f8f91;      /* empty checkboxes */
+            --shadow-rgb: 17, 17, 17;
+
+            /* Status colours: ok = in stock / saved, bad = out of stock / error, warn = low stock / changed */
+            --ok-bg: #e6f4ec;   --ok-text: #0b6b3a;   --ok-alert: #0b5b36;   --ok-line: #1a9b5c;
+            --bad-bg: #fdecea;  --bad-text: #b3301a;  --bad-alert: #8f2a16;  --bad-line: #d43f21;
+            --bad-strong: #c2371b;  --bad-solid: #c2371b;  --bad-btn: #d43f21;
+            --bad-border: #f3b7ac;  --bad-border-2: #f0c4bb;  --bad-faint: #e0b0a6;  --bad-faint-line: #f3dcd6;
+            --danger-rgb: 212, 63, 33;
+            --warn-bg: #fff6dc;  --warn-bg-2: #fff4d6;  --warn-bg-3: #fffbea;
+            --warn-text: #8a6500;  --warn-alert: #6e4d00;  --warn-num: #b58100;  --on-warn: #ffffff;
+            --warn-border: #f2d27a;  --warn-line: #e0a800;  --warn-edit: #f0b400;  --warn-edit-rgb: 240, 180, 0;
+            --info-bg: #eceef0;  --info-text: #2f3338;  --info-line: #707072;
+            --badge-2-text: #444444;
+        }
+
+        /* ---------- Colour tokens: dark ---------- */
+        [data-bs-theme="dark"] {
+            --ink: #f2f2f2;          --ink-rgb: 242, 242, 242;
+            --ink-2: #a1a1a6;        --ink-2-rgb: 161, 161, 166;
+            --ink-3: #6b6b70;
+            --ink-active: #d0d0d3;
+            --ink-disabled: #3a3a3f;
+            --placeholder: #77777c;
+            --on-ink: #111111;       --on-ink-rgb: 17, 17, 17;
+            --on-ink-2: #444444;
+            --on-ink-disabled: #85858a;
+
+            --soft: #121214;         --soft-rgb: 18, 18, 20;
+            --surface: #1c1c1f;
+            --surface-2: #202024;
+            --hover: #19191c;
+            --pressed: #2a2a2e;
+            --pressed-2: #333338;
+            --chip: #26262a;
+            --modal-bg: #1c1c1f;
+            /* --photo-bg / --photo-bg-2 / --photo-icon stay as in light mode */
+
+            --line: #2e2e33;
+            --line-2: #2a2a2e;
+            --line-3: #232327;
+            --line-strong: #3e3e43;
+            --field: #48484e;
+            --field-2: #7a7a80;
+            --shadow-rgb: 0, 0, 0;
+
+            --ok-bg: #0f2a1c;   --ok-text: #6fd39f;   --ok-alert: #8fdcb3;   --ok-line: #2fae6c;
+            --bad-bg: #34150f;  --bad-text: #ff9a85;  --bad-alert: #ffb3a3;  --bad-line: #e2583b;
+            --bad-strong: #ff8a72;  --bad-solid: #d9482b;  --bad-btn: #ff8a72;
+            --bad-border: #6e2b1f;  --bad-border-2: #6e2b1f;  --bad-faint: #7a4036;  --bad-faint-line: #3d1d17;
+            --danger-rgb: 255, 128, 104;
+            --warn-bg: #2e2508;  --warn-bg-2: #2e2508;  --warn-bg-3: #2a2209;
+            --warn-text: #f0c75a;  --warn-alert: #f5d77f;  --warn-num: #f0c75a;  --on-warn: #111111;
+            --warn-border: #6a5414;  --warn-line: #e0a800;  --warn-edit: #e0a800;  --warn-edit-rgb: 224, 168, 0;
+            --info-bg: #222428;  --info-text: #c9cdd2;  --info-line: #8a8a90;
+            --badge-2-text: #c8c8cc;
+
+            /* Bootstrap's own dark greys are bluish; keep them neutral */
+            --bs-body-color-rgb: 242, 242, 242;
+            --bs-emphasis-color: #f2f2f2;  --bs-emphasis-color-rgb: 242, 242, 242;
+            --bs-secondary-bg: #26262a;    --bs-secondary-bg-rgb: 38, 38, 42;
+            --bs-tertiary-bg: #1c1c1f;     --bs-tertiary-bg-rgb: 28, 28, 31;
+            --bs-success-rgb: 111, 211, 159;
+        }
+
+        /* ---------- Bootstrap reads the tokens (both modes) ---------- */
+        :root, [data-bs-theme] {
             --bs-body-font-family: "Helvetica Neue", Helvetica, Arial, "Segoe UI", sans-serif;
-            --bs-body-color: #111111;
-            --bs-body-bg: #f5f5f5;
-            --bs-primary: #111111;           --bs-primary-rgb: 17, 17, 17;
-            --bs-secondary: #707072;         --bs-secondary-rgb: 112, 112, 114;
-            --bs-secondary-color: #707072;
-            --bs-light-rgb: 245, 245, 245;
-            --bs-danger-rgb: 212, 63, 33;
-            --bs-link-color-rgb: 17, 17, 17;
-            --bs-link-hover-color-rgb: 112, 112, 114;
-            --bs-border-color: #e5e5e5;
+            --bs-body-color: var(--ink);
+            --bs-body-bg: var(--soft);
+            --bs-primary: var(--ink);        --bs-primary-rgb: var(--ink-rgb);
+            --bs-secondary: var(--ink-2);    --bs-secondary-rgb: var(--ink-2-rgb);
+            --bs-secondary-color: var(--ink-2);
+            --bs-light-rgb: var(--soft-rgb);
+            --bs-danger-rgb: var(--danger-rgb);
+            --bs-link-color-rgb: var(--ink-rgb);
+            --bs-link-hover-color-rgb: var(--ink-2-rgb);
+            --bs-border-color: var(--line);
             --bs-border-radius: 10px;
             --bs-border-radius-sm: 8px;
             --bs-border-radius-lg: 16px;
             --bs-border-radius-xl: 20px;
-            --bs-box-shadow-sm: 0 1px 2px rgba(17, 17, 17, .05), 0 6px 18px rgba(17, 17, 17, .04);
+            --bs-box-shadow-sm: 0 1px 2px rgba(var(--shadow-rgb), .05), 0 6px 18px rgba(var(--shadow-rgb), .04);
         }
+
+        /* Bootstrap helpers the pages use that are always light: follow the mode instead */
+        [data-bs-theme="dark"] .bg-white { background-color: var(--surface) !important; }
+        [data-bs-theme="dark"] .text-dark,
+        [data-bs-theme="dark"] .text-bg-light { color: var(--ink) !important; }
+        [data-bs-theme="dark"] .table-light { --bs-table-color: var(--ink); --bs-table-bg: var(--surface); --bs-table-border-color: var(--line); }
 
         html { scroll-padding-top: 5.5rem; }      /* keeps scrolled-to content clear of the sticky navbar */
         body { background: var(--soft); -webkit-font-smoothing: antialiased; }
-        :focus-visible { outline: 2px solid #111; outline-offset: 2px; }
+        :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
         h1, h2, h3, h4, h5, h6 { font-weight: 800; letter-spacing: -.02em; }
-        .form-check-input:not(:checked) { border-color: #8f8f91; }   /* empty checkboxes / radios clearly visible */
+        .form-check-input:not(:checked) { border-color: var(--field-2); }   /* empty checkboxes / radios clearly visible */
         .btn-spinner { display: none; }
         .is-loading .btn-spinner { display: inline-block; }
 
@@ -66,7 +211,7 @@ function render_header(string $title, string $active = '', bool $nav = true, str
         .page-sub { color: var(--ink-2); font-size: .95rem; }
 
         /* ---------- Navbar ---------- */
-        .app-nav { background: #fff; border-bottom: 1px solid var(--line); padding: .4rem 0; }
+        .app-nav { background: var(--surface); border-bottom: 1px solid var(--line); padding: .4rem 0; }
         .app-nav .navbar-brand {
             display: inline-flex; align-items: center; gap: .6rem;
             font-weight: 800; font-size: 1.05rem; letter-spacing: -.02em; text-transform: uppercase; color: var(--ink);
@@ -77,19 +222,28 @@ function render_header(string $title, string $active = '', bool $nav = true, str
             background: var(--ink); transform: scaleX(0); transform-origin: left; transition: transform .2s ease;
         }
         .app-nav .nav-link:hover::after, .app-nav .nav-link.active::after { transform: scaleX(1); }
-        .app-nav .navbar-toggler { border-color: #cacacb; }
+        .app-nav .navbar-toggler { border-color: var(--field); }
         .brand-logo { height: 2.25rem; width: auto; flex-shrink: 0; }          /* the two-shoe logo (assets/logo.png) */
         .brand-logo-lg { height: 5.5rem; }
+        [data-bs-theme="dark"] .brand-logo { filter: invert(1); }            /* black line art -> white */
+
+        /* ---------- Light / dark switch (navbar; top-right corner on pages without the navbar) ---------- */
+        .theme-toggle { --bs-btn-padding-x: .6rem; }
+        .theme-toggle .bi { font-size: .95rem; }
+        .theme-toggle .bi-sun,
+        [data-bs-theme="dark"] .theme-toggle .bi-moon-stars { display: none; }
+        [data-bs-theme="dark"] .theme-toggle .bi-sun { display: inline-block; }
+        .theme-corner { position: fixed; top: 1rem; right: 1rem; z-index: 1030; }
 
         /* ---------- Cards ---------- */
-        .card { border: 1px solid #ececec; }
+        .card { border: 1px solid var(--line-2); }
         .card-header {
-            background: #fff; padding: 1rem 1.25rem; border-bottom: 1px solid #f0f0f0;
+            background: var(--surface); padding: 1rem 1.25rem; border-bottom: 1px solid var(--line-3);
             font-weight: 700; letter-spacing: -.01em;
         }
-        .card-footer { background: #fff; padding: 1rem 1.25rem; border-top: 1px solid #f0f0f0; }
+        .card-footer { background: var(--surface); padding: 1rem 1.25rem; border-top: 1px solid var(--line-3); }
 
-        /* ---------- Buttons (pill, black primary) ---------- */
+        /* ---------- Buttons (pill; black primary - white in dark mode) ---------- */
         .btn {
             --bs-btn-padding-x: 1.25rem; --bs-btn-padding-y: .55rem;
             --bs-btn-font-weight: 600; --bs-btn-border-radius: 50rem;
@@ -97,24 +251,24 @@ function render_header(string $title, string $active = '', bool $nav = true, str
         }
         .btn-sm { --bs-btn-padding-x: .9rem; --bs-btn-padding-y: .35rem; --bs-btn-font-size: .8rem; --bs-btn-border-radius: 50rem; }
         .btn-primary, .btn-success {
-            --bs-btn-color: #fff; --bs-btn-bg: #111; --bs-btn-border-color: #111;
-            --bs-btn-hover-color: #fff; --bs-btn-hover-bg: #707072; --bs-btn-hover-border-color: #707072;
-            --bs-btn-active-color: #fff; --bs-btn-active-bg: #39393b; --bs-btn-active-border-color: #39393b;
-            --bs-btn-disabled-color: #fff; --bs-btn-disabled-bg: #cacacb; --bs-btn-disabled-border-color: #cacacb;
-            --bs-btn-focus-shadow-rgb: 17, 17, 17;
+            --bs-btn-color: var(--on-ink); --bs-btn-bg: var(--ink); --bs-btn-border-color: var(--ink);
+            --bs-btn-hover-color: var(--on-ink); --bs-btn-hover-bg: var(--ink-2); --bs-btn-hover-border-color: var(--ink-2);
+            --bs-btn-active-color: var(--on-ink); --bs-btn-active-bg: var(--ink-active); --bs-btn-active-border-color: var(--ink-active);
+            --bs-btn-disabled-color: var(--on-ink-disabled); --bs-btn-disabled-bg: var(--ink-disabled); --bs-btn-disabled-border-color: var(--ink-disabled);
+            --bs-btn-focus-shadow-rgb: var(--ink-rgb);
         }
         .btn-outline-primary, .btn-outline-secondary, .btn-outline-success, .btn-outline-dark {
-            --bs-btn-color: #111; --bs-btn-border-color: #cacacb;
-            --bs-btn-hover-color: #111; --bs-btn-hover-bg: #fff; --bs-btn-hover-border-color: #111;
-            --bs-btn-active-color: #111; --bs-btn-active-bg: #f5f5f5; --bs-btn-active-border-color: #111;
-            --bs-btn-disabled-color: #b5b5b7; --bs-btn-disabled-border-color: #e5e5e5;
-            --bs-btn-focus-shadow-rgb: 17, 17, 17;
+            --bs-btn-color: var(--ink); --bs-btn-border-color: var(--field);
+            --bs-btn-hover-color: var(--ink); --bs-btn-hover-bg: var(--surface); --bs-btn-hover-border-color: var(--ink);
+            --bs-btn-active-color: var(--ink); --bs-btn-active-bg: var(--soft); --bs-btn-active-border-color: var(--ink);
+            --bs-btn-disabled-color: var(--ink-3); --bs-btn-disabled-border-color: var(--line);
+            --bs-btn-focus-shadow-rgb: var(--ink-rgb);
         }
         .btn-outline-danger {
-            --bs-btn-color: #d43f21; --bs-btn-border-color: #f0c4bb;
+            --bs-btn-color: var(--bad-btn); --bs-btn-border-color: var(--bad-border-2);
             --bs-btn-hover-color: #fff; --bs-btn-hover-bg: #d43f21; --bs-btn-hover-border-color: #d43f21;
             --bs-btn-active-color: #fff; --bs-btn-active-bg: #b3301a; --bs-btn-active-border-color: #b3301a;
-            --bs-btn-disabled-color: #e0b0a6; --bs-btn-disabled-border-color: #f3dcd6;
+            --bs-btn-disabled-color: var(--bad-faint); --bs-btn-disabled-border-color: var(--bad-faint-line);
             --bs-btn-focus-shadow-rgb: 212, 63, 33;
         }
         .btn-danger {
@@ -124,64 +278,78 @@ function render_header(string $title, string $active = '', bool $nav = true, str
             --bs-btn-focus-shadow-rgb: 212, 63, 33;
         }
         .btn-light {
-            --bs-btn-bg: #f5f5f5; --bs-btn-border-color: #e5e5e5; --bs-btn-color: #111;
-            --bs-btn-hover-bg: #ebebeb; --bs-btn-hover-border-color: #cacacb; --bs-btn-hover-color: #111;
-            --bs-btn-active-bg: #e0e0e0; --bs-btn-active-border-color: #cacacb; --bs-btn-active-color: #111;
+            --bs-btn-bg: var(--soft); --bs-btn-border-color: var(--line); --bs-btn-color: var(--ink);
+            --bs-btn-hover-bg: var(--pressed); --bs-btn-hover-border-color: var(--field); --bs-btn-hover-color: var(--ink);
+            --bs-btn-active-bg: var(--pressed-2); --bs-btn-active-border-color: var(--field); --bs-btn-active-color: var(--ink);
         }
-        .btn-link { --bs-btn-color: #707072; --bs-btn-hover-color: #111; --bs-btn-active-color: #111; }
+        .btn-link { --bs-btn-color: var(--ink-2); --bs-btn-hover-color: var(--ink); --bs-btn-active-color: var(--ink); }
         .input-group > .btn { --bs-btn-border-radius: var(--bs-border-radius); }
         .input-group-sm > .btn { --bs-btn-border-radius: var(--bs-border-radius-sm); }
 
         /* ---------- Forms ---------- */
         .form-label { margin-bottom: .35rem; font-size: .8rem; font-weight: 600; }
-        .form-control, .form-select { padding: .6rem .85rem; border-color: #cacacb; }
+        .form-control, .form-select { padding: .6rem .85rem; border-color: var(--field); }
         .form-control-sm, .form-select-sm { padding: .35rem .65rem; }
-        .form-control:focus, .form-select:focus { border-color: #111; box-shadow: 0 0 0 .2rem rgba(17, 17, 17, .12); }
-        .form-control::placeholder { color: #a0a0a2; }
+        .form-control:focus, .form-select:focus { border-color: var(--ink); box-shadow: 0 0 0 .2rem rgba(var(--ink-rgb), .12); }
+        .form-control::placeholder { color: var(--placeholder); }
         .form-text { color: var(--ink-2); }
-        .input-group-text { background: var(--soft); border-color: #cacacb; color: var(--ink-2); font-weight: 600; }
-        .form-check-input:checked { background-color: #111; border-color: #111; }
-        .form-check-input:focus { border-color: #111; box-shadow: 0 0 0 .2rem rgba(17, 17, 17, .12); }
+        .input-group-text { background: var(--soft); border-color: var(--field); color: var(--ink-2); font-weight: 600; }
+        .form-check-input:checked { background-color: var(--ink); border-color: var(--ink); }
+        .form-check-input:focus { border-color: var(--ink); box-shadow: 0 0 0 .2rem rgba(var(--ink-rgb), .12); }
+        /* Dark mode: a ticked box is white, so its tick / dot / switch knob is drawn black */
+        [data-bs-theme="dark"] .form-check-input:checked[type="checkbox"] {
+            --bs-form-check-bg-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23111' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
+        }
+        [data-bs-theme="dark"] .form-check-input:checked[type="radio"] {
+            --bs-form-check-bg-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='2' fill='%23111'/%3e%3c/svg%3e");
+        }
+        [data-bs-theme="dark"] .form-switch .form-check-input:checked {
+            --bs-form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23111'/%3e%3c/svg%3e");
+        }
 
         /* ---------- Data tables ---------- */
-        .table-grid > :not(caption) > * > * { padding: 1.1rem 1.25rem; border-bottom-color: #f0f0f0; }
+        .table-grid > :not(caption) > * > * { padding: 1.1rem 1.25rem; border-bottom-color: var(--line-3); }
         .table-grid thead th {
-            background: #fff; color: var(--ink-2); font-size: .72rem; font-weight: 700;
-            letter-spacing: .08em; text-transform: uppercase; border-bottom: 2px solid #111;
+            background: var(--surface); color: var(--ink-2); font-size: .72rem; font-weight: 700;
+            letter-spacing: .08em; text-transform: uppercase; border-bottom: 2px solid var(--ink);
         }
-        .table-grid tbody tr:not(.collapse):hover > * { --bs-table-bg-state: #fafafa; }
+        .table-grid tbody tr:not(.collapse):hover > * { --bs-table-bg-state: var(--hover); }
         @media (max-width: 767.98px) {
             .table-grid > :not(caption) > * > * { padding: .8rem; }
         }
 
         /* ---------- Badges ---------- */
         .badge { padding: .45em .8em; border-radius: 50rem; font-weight: 700; letter-spacing: .02em; }
-        .badge.text-bg-success   { background-color: #e6f4ec !important; color: #0b6b3a !important; }
-        .badge.text-bg-danger    { background-color: #fdecea !important; color: #b3301a !important; }
-        .badge.text-bg-secondary { background-color: #ececec !important; color: #444 !important; }
+        .badge.text-bg-success   { background-color: var(--ok-bg) !important; color: var(--ok-text) !important; }
+        .badge.text-bg-danger    { background-color: var(--bad-bg) !important; color: var(--bad-text) !important; }
+        .badge.text-bg-secondary { background-color: var(--line-2) !important; color: var(--badge-2-text) !important; }
+        .badge.text-bg-primary   { color: var(--on-ink) !important; }                                   /* "Admin": black, or white in dark mode */
+        .badge.badge-low         { background-color: var(--warn-bg) !important; color: var(--warn-text) !important; }   /* "2 low" */
 
         /* ---------- Alerts (flash messages) ---------- */
         .alert { border: 0; border-left: 4px solid transparent; border-radius: var(--bs-border-radius); font-weight: 500; }
-        .alert-success { background: #e6f4ec; color: #0b5b36; border-left-color: #1a9b5c; }
-        .alert-danger  { background: #fdecea; color: #8f2a16; border-left-color: #d43f21; }
-        .alert-warning { background: #fff4d6; color: #6e4d00; border-left-color: #e0a800; }
-        .alert-info    { background: #eceef0; color: #2f3338; border-left-color: #707072; }
+        .alert-success { background: var(--ok-bg); color: var(--ok-alert); border-left-color: var(--ok-line); }
+        .alert-danger  { background: var(--bad-bg); color: var(--bad-alert); border-left-color: var(--bad-line); }
+        .alert-warning { background: var(--warn-bg-2); color: var(--warn-alert); border-left-color: var(--warn-line); }
+        .alert-info    { background: var(--info-bg); color: var(--info-text); border-left-color: var(--info-line); }
         .alert ul { padding-left: 1.1rem; }
 
         /* ---------- Modals ---------- */
-        .modal-content { border: 0; box-shadow: 0 24px 64px rgba(17, 17, 17, .22); }
+        .modal { --bs-modal-bg: var(--modal-bg); }
+        .modal-content { border: 0; box-shadow: 0 24px 64px rgba(var(--shadow-rgb), .22); }
+        [data-bs-theme="dark"] .modal-content { border: 1px solid var(--line); }
         .modal-header, .modal-footer { border: 0; }
         .modal-header { padding: 1.5rem 1.5rem .5rem; }
         .modal-title { font-weight: 800; letter-spacing: -.02em; text-transform: uppercase; }
 
         /* ---------- Pagination (round, black active page) ---------- */
         .pagination {
-            --bs-pagination-color: #111; --bs-pagination-bg: transparent; --bs-pagination-border-width: 0;
-            --bs-pagination-hover-color: #111; --bs-pagination-hover-bg: #f5f5f5;
-            --bs-pagination-focus-color: #111; --bs-pagination-focus-bg: #f5f5f5;
-            --bs-pagination-focus-box-shadow: 0 0 0 .2rem rgba(17, 17, 17, .15);
-            --bs-pagination-active-color: #fff; --bs-pagination-active-bg: #111; --bs-pagination-active-border-color: #111;
-            --bs-pagination-disabled-color: #b5b5b7; --bs-pagination-disabled-bg: transparent;
+            --bs-pagination-color: var(--ink); --bs-pagination-bg: transparent; --bs-pagination-border-width: 0;
+            --bs-pagination-hover-color: var(--ink); --bs-pagination-hover-bg: var(--soft);
+            --bs-pagination-focus-color: var(--ink); --bs-pagination-focus-bg: var(--soft);
+            --bs-pagination-focus-box-shadow: 0 0 0 .2rem rgba(var(--ink-rgb), .15);
+            --bs-pagination-active-color: var(--on-ink); --bs-pagination-active-bg: var(--ink); --bs-pagination-active-border-color: var(--ink);
+            --bs-pagination-disabled-color: var(--ink-3); --bs-pagination-disabled-bg: transparent;
             gap: .25rem;
         }
         .pagination .page-item .page-link,
@@ -194,31 +362,31 @@ function render_header(string $title, string $active = '', bool $nav = true, str
         .cat-nav { display: flex; flex-wrap: wrap; gap: .5rem; }
         .cat-pill {
             display: inline-flex; align-items: center; gap: .5rem; padding: .45rem .45rem .45rem 1.1rem;
-            border: 1px solid #cacacb; border-radius: 50rem; background: #fff; color: var(--ink);
+            border: 1px solid var(--field); border-radius: 50rem; background: var(--surface); color: var(--ink);
             font-weight: 600; line-height: 1.25; text-decoration: none; white-space: nowrap;
             transition: border-color .15s ease, background-color .15s ease, color .15s ease;
         }
         .cat-pill:hover { border-color: var(--ink); color: var(--ink); }
-        .cat-pill[aria-current="page"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+        .cat-pill[aria-current="page"] { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
         .cat-count {
             min-width: 1.7rem; padding: .15rem .5rem; border-radius: 50rem; background: var(--soft);
             color: var(--ink-2); font-size: .72rem; font-weight: 700; text-align: center;
         }
-        .cat-pill[aria-current="page"] .cat-count { background: rgba(255, 255, 255, .2); color: #fff; }
-        .cat-pill.is-unset { border-color: #f2d27a; background: #fff6dc; color: #8a6500; }      /* models with no main category yet */
-        .cat-pill.is-unset:hover { border-color: #8a6500; }
-        .cat-pill.is-unset[aria-current="page"] { background: #8a6500; border-color: #8a6500; color: #fff; }
+        .cat-pill[aria-current="page"] .cat-count { background: rgba(var(--on-ink-rgb), .2); color: var(--on-ink); }
+        .cat-pill.is-unset { border-color: var(--warn-border); background: var(--warn-bg); color: var(--warn-text); }      /* models with no main category yet */
+        .cat-pill.is-unset:hover { border-color: var(--warn-text); }
+        .cat-pill.is-unset[aria-current="page"] { background: var(--warn-text); border-color: var(--warn-text); color: var(--on-warn); }
         @media (max-width: 575.98px) {
             .cat-pill { padding: .4rem .4rem .4rem .9rem; font-size: .875rem; }
         }
 
         /* ---------- Add Shoe: size tiles ---------- */
         .size-tile {
-            padding: .6rem .7rem .7rem; background: #f7f7f7; border: 1px solid #ececec; border-radius: 12px;
+            padding: .6rem .7rem .7rem; background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 12px;
             transition: border-color .15s ease, background-color .15s ease;
         }
-        .size-tile:hover { border-color: #cacacb; }
-        .size-tile:focus-within { border-color: #111; background: #fff; }
+        .size-tile:hover { border-color: var(--field); }
+        .size-tile:focus-within { border-color: var(--ink); background: var(--surface); }
         .size-tile .form-label { margin-bottom: .25rem; color: var(--ink-2); }
 
         /* ---------- Users: role cards ---------- */
@@ -236,7 +404,7 @@ function render_header(string $title, string $active = '', bool $nav = true, str
 <body>
 <a class="visually-hidden-focusable position-absolute p-2 bg-white" href="#main">Skip to content</a>
 <?php if ($nav && $u): ?>
-<nav class="navbar navbar-expand-md navbar-light bg-white app-nav sticky-top mb-4">
+<nav class="navbar navbar-expand-md app-nav sticky-top mb-4">
     <div class="container">
         <a class="navbar-brand" href="<?= e(home_page()) ?>"><img src="assets/logo.png" class="brand-logo" width="201" height="182" alt="">Dazzling Footwear</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav-menu"
@@ -281,6 +449,7 @@ function render_header(string $title, string $active = '', bool $nav = true, str
                     <?= e($u['display_name']) ?>
                     <span class="badge text-bg-<?= $u['role'] === 'admin' ? 'primary' : 'secondary' ?> ms-1"><?= e(ROLES[$u['role']] ?? $u['role']) ?></span>
                 </span>
+                <?php render_theme_toggle(); ?>
                 <!-- The button only opens the confirmation dialog; nothing is submitted until "Yes". -->
                 <form method="post" action="logout.php" class="m-0" id="signout-form">
                     <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
@@ -311,7 +480,21 @@ function render_header(string $title, string $active = '', bool $nav = true, str
         </div>
     </div>
 </div>
+<?php else: ?>
+<div class="theme-corner"><?php render_theme_toggle(); ?></div>
 <?php endif;
+}
+
+/** The light / dark mode button. The script in render_header() makes every [data-theme-toggle] work. */
+function render_theme_toggle(): void
+{
+    ?>
+    <button type="button" class="btn btn-outline-secondary btn-sm theme-toggle" data-theme-toggle
+            aria-pressed="false" title="Switch to dark mode">
+        <i class="bi bi-moon-stars" aria-hidden="true"></i><i class="bi bi-sun" aria-hidden="true"></i>
+        <span class="visually-hidden">Dark mode</span>
+    </button>
+    <?php
 }
 
 /** Prints the one-time flash banner, if any. Success banners fade after a few seconds. */
